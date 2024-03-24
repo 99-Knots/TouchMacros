@@ -81,12 +81,13 @@ class MainWindow(QMainWindow):
         width = 150
         height = screen_geo.height()
         x = screen_geo.right() - width
-        y = screen_geo.top()    # todo: have close option within screen space
+        y = screen_geo.top()
         self.setGeometry(QRect(x, y, width, height))
 
         self.setWindowFlags(Qt.WindowType.CustomizeWindowHint |
                             Qt.WindowType.WindowCloseButtonHint |
-                            #Qt.WindowType.Tool |
+                            Qt.WindowType.Tool |
+                            Qt.WindowType.WindowStaysOnTopHint |
                             Qt.WindowType.WindowTitleHint)
         self.setWindowTitle('TouchMacros')
 
