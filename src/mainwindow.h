@@ -13,9 +13,12 @@ public:
     ~MainWindow();
 
 protected:
+    HWND handle;
+    int win_width = 150;
     static constexpr int BUTTON_COUNT = 5;
     Key* buttonArray[BUTTON_COUNT];
 
+    void rearrangeScreen();
     void closeEvent(QCloseEvent *e);
 };
 
