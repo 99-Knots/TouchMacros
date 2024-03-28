@@ -87,10 +87,19 @@ void MainWindow::rearrangeScreen()
         TCHAR win_text[200];
         GetWindowText(hwnd, win_text, 200);
         QString title = QString::fromWCharArray(win_text);
+
         if (hwnd != handle && !title.isEmpty()){
-            ShowWindow(hwnd, SW_NORMAL);
-            AdjustWindowRectEx(&rect, GetWindowLongW(hwnd, GWL_STYLE), FALSE, GetWindowLong(hwnd, GWL_EXSTYLE));    // need to adjust rect to account for window shadow, frame, etc...
-            SetWindowPos(hwnd, NULL, rect.left + 1, mi.rcWork.top + 1, rect.right - rect.left - 3, rect.bottom - mi.rcWork.top - 2, SWP_NOZORDER | SWP_NOACTIVATE); // keep old top coordinate because AdjustWinRect crops of titlebar
+            // get right edge of window including frame and decorations
+            RECT clRect;
+            GetClientRect(hwnd, &clRect);
+            POINT topRight = {clRect.right, clRect.top};
+            ClientToScreen(hwnd, &topRight);
+
+            if (topRight.x>rect.right-2) {  //exclude windows that don't overlap from updating
+                ShowWindow(hwnd, SW_NORMAL);
+                AdjustWindowRectEx(&rect, GetWindowLongW(hwnd, GWL_STYLE), FALSE, GetWindowLong(hwnd, GWL_EXSTYLE));    // need to adjust rect to account for window shadow, frame, etc...
+                SetWindowPos(hwnd, NULL, rect.left + 1, mi.rcWork.top + 1, rect.right - rect.left - 3, rect.bottom - mi.rcWork.top - 2, SWP_NOZORDER | SWP_NOACTIVATE); // keep old top coordinate because AdjustWinRect crops off titlebar
+            }
         }
         else {
             rect.right = mi.rcWork.right;
@@ -98,8 +107,6 @@ void MainWindow::rearrangeScreen()
             AdjustWindowRectEx(&rect, GetWindowLongW(hwnd, GWL_STYLE), FALSE, GetWindowLong(hwnd, GWL_EXSTYLE));
             SetWindowPos(handle, NULL, rect.left + 1, mi.rcWork.top, rect.right - rect.left - 2, rect.bottom - mi.rcWork.top - 2, SWP_SHOWWINDOW);
         }
-        //GetWindowRect(hwnd, &rect);
-        //qDebug() << rect.left << rect.right << rect.top << rect.bottom << title;
     }
     // todo: resizeEvent writes new width to win_width before calling rearrange to scale other windows as well
 }
