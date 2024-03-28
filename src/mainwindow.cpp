@@ -2,6 +2,7 @@
 #include <QApplication>
 #include <QScreen>
 #include <QVBoxLayout>
+#include <QResizeEvent>
 #include <windows.h>
 #include <vector>
 
@@ -77,17 +78,16 @@ void MainWindow::rearrangeScreen()
     param.windows = &windows;
     param.monitor = monitor;
     EnumWindows(EnumWinProc, reinterpret_cast<LPARAM>(&param));
-
+    RECT rect;
 
     for (int i=windows.size(); i>0; --i)    // traverse in reverse order to preserve z-order when using SetWindowPos
     {
         HWND hwnd = windows[i];
-        RECT rect = mi.rcWork;
+        rect = mi.rcWork;
         rect.right -= win_width;
         TCHAR win_text[200];
         GetWindowText(hwnd, win_text, 200);
         QString title = QString::fromWCharArray(win_text);
-
         if (hwnd != handle && !title.isEmpty()){
             // get right edge of window including frame and decorations
             RECT clRect;
@@ -101,13 +101,12 @@ void MainWindow::rearrangeScreen()
                 SetWindowPos(hwnd, NULL, rect.left + 1, mi.rcWork.top + 1, rect.right - rect.left - 3, rect.bottom - mi.rcWork.top - 2, SWP_NOZORDER | SWP_NOACTIVATE); // keep old top coordinate because AdjustWinRect crops off titlebar
             }
         }
-        else {
-            rect.right = mi.rcWork.right;
-            rect.left = rect.right - win_width;
-            AdjustWindowRectEx(&rect, GetWindowLongW(hwnd, GWL_STYLE), FALSE, GetWindowLong(hwnd, GWL_EXSTYLE));
-            SetWindowPos(handle, NULL, rect.left + 1, mi.rcWork.top, rect.right - rect.left - 2, rect.bottom - mi.rcWork.top - 2, SWP_SHOWWINDOW);
-        }
     }
+    // reposition mainwindow to right screen edge
+    rect = mi.rcWork;
+    rect.left = rect.right - win_width;
+    AdjustWindowRectEx(&rect, GetWindowLongW(handle, GWL_STYLE), FALSE, GetWindowLong(handle, GWL_EXSTYLE));
+    SetWindowPos(handle, NULL, rect.left + 1, mi.rcWork.top, rect.right - rect.left - 2, rect.bottom - mi.rcWork.top - 2, SWP_SHOWWINDOW);
     // todo: resizeEvent writes new width to win_width before calling rearrange to scale other windows as well
 }
 
