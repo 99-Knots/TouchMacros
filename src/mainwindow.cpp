@@ -88,9 +88,13 @@ void MainWindow::rearrangeScreen()
         GetWindowText(hwnd, win_text, 200);
         QString title = QString::fromWCharArray(win_text);
         if (hwnd != handle && !title.isEmpty()){
-            ShowWindow(hwnd, SW_NORMAL);
-            AdjustWindowRectEx(&rect, GetWindowLongW(hwnd, GWL_STYLE), FALSE, GetWindowLong(hwnd, GWL_EXSTYLE));    // need to adjust rect to account for window shadow, frame, etc...
-            SetWindowPos(hwnd, NULL, rect.left + 1, mi.rcWork.top + 1, rect.right - rect.left - 3, rect.bottom - mi.rcWork.top - 2, SWP_NOZORDER | SWP_NOACTIVATE); // keep old top coordinate because AdjustWinRect crops of titlebar
+            RECT win_rect;
+            GetWindowRect(hwnd, &win_rect);
+            if (win_rect.right>rect.right-3) {
+                ShowWindow(hwnd, SW_NORMAL);
+                AdjustWindowRectEx(&rect, GetWindowLongW(hwnd, GWL_STYLE), FALSE, GetWindowLong(hwnd, GWL_EXSTYLE));    // need to adjust rect to account for window shadow, frame, etc...
+                SetWindowPos(hwnd, NULL, rect.left + 1, mi.rcWork.top + 1, rect.right - rect.left - 3, rect.bottom - mi.rcWork.top - 2, SWP_NOZORDER | SWP_NOACTIVATE); // keep old top coordinate because AdjustWinRect crops off titlebar
+            }
         }
         else {
             rect.right = mi.rcWork.right;
