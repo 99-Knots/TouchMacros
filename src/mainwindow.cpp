@@ -7,33 +7,48 @@
 #include <vector>
 
 
-struct EnumWinParam
-{
-    std::vector<HWND> *windows;
-    HMONITOR monitor;
-};
+namespace {
+    struct EnumWinParam
+    {
+        std::vector<HWND> *windows;
+        HMONITOR monitor;
+    };
 
-bool isProperWindow(HWND handle)
-{
-    if (!IsWindowVisible(handle))
-        return false;
+    bool isProperWindow(HWND handle)
+    {
+        if (!IsWindowVisible(handle))
+            return false;
 
-    TITLEBARINFO ti;
-    ti.cbSize = sizeof(ti);
-    GetTitleBarInfo(handle, &ti);
-    if (ti.rgstate[0] & STATE_SYSTEM_INVISIBLE)
-        return false;
+        TITLEBARINFO ti;
+        ti.cbSize = sizeof(ti);
+        GetTitleBarInfo(handle, &ti);
+        if (ti.rgstate[0] & STATE_SYSTEM_INVISIBLE)
+            return false;
 
-    return true;
-}
+        return true;
+    }
 
-BOOL CALLBACK EnumWinProc(HWND handle, LPARAM param)
-{
-    EnumWinParam *p = reinterpret_cast<EnumWinParam*>(param);
-    HMONITOR monitor = MonitorFromWindow(handle, MONITOR_DEFAULTTONEAREST);
-    if (p->monitor == monitor && isProperWindow(handle))
-        p->windows->push_back(handle);
-    return TRUE;
+    BOOL CALLBACK GetWinOnMonitor(HWND hwnd, LPARAM param)
+    {
+        EnumWinParam *p = reinterpret_cast<EnumWinParam*>(param);
+        HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+        if (p->monitor == monitor && isProperWindow(hwnd))
+            p->windows->push_back(hwnd);
+        return TRUE;
+    }
+
+
+    bool resizeWin (HWND hwnd, LPRECT rect, UINT flags)
+    {
+        bool returnVal;
+        int top = rect->top;    // keep old top coordinate because AdjustWinRect crops off titlebar
+        ShowWindow(hwnd, SW_NORMAL);
+        returnVal = AdjustWindowRectEx(rect, GetWindowLongW(hwnd, GWL_STYLE), FALSE, GetWindowLong(hwnd, GWL_EXSTYLE));    // need to adjust rect to account for window shadow, frame, etc...
+        if (!returnVal)
+            return false;
+        returnVal = SetWindowPos(hwnd, NULL, rect->left + 1, top + 1, rect->right - rect->left - 3, rect->bottom - top - 2, flags);
+        return returnVal;
+    }
 }
 
 MainWindow::MainWindow (QWidget* parent) : QMainWindow (parent)
@@ -69,15 +84,18 @@ MainWindow::MainWindow (QWidget* parent) : QMainWindow (parent)
 
 void MainWindow::rearrangeScreen()
 {
+    // get active monitor and its corner coordinates on virtual desktop
     HMONITOR monitor = MonitorFromPoint(POINT{pos().x(), pos().y()}, MONITOR_DEFAULTTOPRIMARY);
     MONITORINFO mi;
     mi.cbSize = sizeof(MONITORINFO);
     GetMonitorInfo(monitor, &mi);
+
+    // get all windows on active monitor
     std::vector<HWND> windows;
     EnumWinParam param;
     param.windows = &windows;
     param.monitor = monitor;
-    EnumWindows(EnumWinProc, reinterpret_cast<LPARAM>(&param));
+    EnumWindows(GetWinOnMonitor, reinterpret_cast<LPARAM>(&param));
     RECT rect;
 
     for (int i=windows.size(); i>0; --i)    // traverse in reverse order to preserve z-order when using SetWindowPos
@@ -85,10 +103,8 @@ void MainWindow::rearrangeScreen()
         HWND hwnd = windows[i];
         rect = mi.rcWork;
         rect.right -= win_width;
-        TCHAR win_text[200];
-        GetWindowText(hwnd, win_text, 200);
-        QString title = QString::fromWCharArray(win_text);
-        if (hwnd != handle && !title.isEmpty()){
+
+        if (hwnd != handle && GetWindowTextLength(hwnd)){
             // get right edge of window including frame and decorations
             RECT clRect;
             GetClientRect(hwnd, &clRect);
@@ -96,18 +112,15 @@ void MainWindow::rearrangeScreen()
             ClientToScreen(hwnd, &topRight);
 
             if (topRight.x>rect.right-2) {  //exclude windows that don't overlap from updating
-                ShowWindow(hwnd, SW_NORMAL);
-                AdjustWindowRectEx(&rect, GetWindowLongW(hwnd, GWL_STYLE), FALSE, GetWindowLong(hwnd, GWL_EXSTYLE));    // need to adjust rect to account for window shadow, frame, etc...
-                SetWindowPos(hwnd, NULL, rect.left + 1, mi.rcWork.top + 1, rect.right - rect.left - 3, rect.bottom - mi.rcWork.top - 2, SWP_NOZORDER | SWP_NOACTIVATE); // keep old top coordinate because AdjustWinRect crops off titlebar
+                resizeWin(hwnd, &rect, SWP_NOZORDER | SWP_NOACTIVATE);
             }
         }
     }
     // reposition mainwindow to right screen edge
     rect = mi.rcWork;
     rect.left = rect.right - win_width;
-    AdjustWindowRectEx(&rect, GetWindowLongW(handle, GWL_STYLE), FALSE, GetWindowLong(handle, GWL_EXSTYLE));
-    SetWindowPos(handle, NULL, rect.left + 1, mi.rcWork.top, rect.right - rect.left - 2, rect.bottom - mi.rcWork.top - 2, SWP_SHOWWINDOW);
-    // todo: resizeEvent writes new width to win_width before calling rearrange to scale other windows as well
+    resizeWin(handle, &rect, SWP_SHOWWINDOW);
+    // todo: resizeEvent writes new width to win_width before calling rearrange to scale other windows as well -> what if window got moved?
 }
 
 void MainWindow::closeEvent(QCloseEvent *e)
