@@ -4,6 +4,16 @@
 #include <QMainWindow>
 #include "key.h"
 
+enum class Alignment
+{
+    NONE = 0,
+    LEFT,
+    TOP,
+    RIGHT,
+    BOTTOM
+};
+
+
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -14,14 +24,15 @@ public:
 
 protected:
     HWND handle;
-    int win_width = 150;
+    int win_width = 250;    // todo: find way to get good default value to
+    Alignment alignment = Alignment::NONE;
     bool suppressResize = false;
     static constexpr int BUTTON_COUNT = 5;
     Key* buttonArray[BUTTON_COUNT];
 
-    int isDocked();
+    bool CheckAlignment();
     void rearrangeScreen();
-    void repositionOther(int widthLeftFree, int comparisonWidth=0, bool fullscreen=false);
+    void repositionOther(int widthLeftFree, int comparisonWidth=0);
     void repositionSelf(int width);
     void resizeEvent(QResizeEvent *e);
     void closeEvent(QCloseEvent *e);
