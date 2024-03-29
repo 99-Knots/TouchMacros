@@ -4,7 +4,6 @@
 #include <QVBoxLayout>
 #include <QResizeEvent>
 #include <windows.h>
-#include <dwmapi.h>
 #include <vector>
 
 
@@ -39,17 +38,19 @@ namespace {
     }
 
 
-    BOOL repositionWin (HWND hwnd, LPRECT rect, UINT flags)
+    BOOL repositionWin (HWND hwnd, PWINDOWINFO wi, LPRECT rect, UINT flags, bool fullscreen=false)
     {
         ShowWindow(hwnd, SW_NORMAL);
         // to counter the invisible borders / shadows on windows 10
-        WINDOWINFO wi;
-        wi.cbSize = sizeof(WINDOWINFO);
-        GetWindowInfo(hwnd, &wi);
-        int borderX = wi.cxWindowBorders - 1;
-        int borderY = wi.cyWindowBorders - 1;
+        int borderXl = 0;
+        int borderXr = wi->cxWindowBorders - 1;
+        int borderY = 0;
+        if (fullscreen) {
+            borderXl = wi->cxWindowBorders - 1;
+            borderY = wi->cyWindowBorders - 1;
+        }
 
-        return SetWindowPos(hwnd, NULL, rect->left - borderX, rect->top, rect->right - rect->left + borderX*2, rect->bottom - rect->top + borderY, flags);
+        return SetWindowPos(hwnd, NULL, rect->left - borderXl, rect->top, rect->right - rect->left + borderXr + borderXl, rect->bottom - rect->top + borderY, flags);
     }
 
     std::pair<HMONITOR, MONITORINFO> getMonitor(HWND hwnd)
@@ -123,39 +124,72 @@ int MainWindow::isDocked()  // return 0 if not docked, 1 if at right screen edge
     return 0;
 }
 
-void MainWindow::rearrangeScreen()
+void MainWindow::repositionOther(int widthLeftFree, int comparisonWidth, bool fullscreen)
 {
+    UINT dpi = GetDpiForWindow(handle);
+    int widthDPI = widthLeftFree * dpi / USER_DEFAULT_SCREEN_DPI;  // account for different dpi for scaled displays
+
     std::pair<HMONITOR, MONITORINFO> monitor = getMonitor(handle);
     std::vector<HWND> windows = getWindowsOnMonitor(monitor.first);
-    UINT dpi = GetDpiForWindow(handle);
-    int widthDPI = win_width * dpi / USER_DEFAULT_SCREEN_DPI;  // account for different dpi for scaled displays
 
     RECT rect;
+    WINDOWINFO wi;
+    wi.cbSize = sizeof(WINDOWINFO);
 
     for (int i=windows.size(); i>0; --i)    // traverse in reverse order to preserve z-order when using SetWindowPos
     {
         HWND hwnd = windows[i];
-        rect = monitor.second.rcWork;
-        rect.right -= widthDPI;
 
         if (hwnd != handle && GetWindowTextLength(hwnd)){
-            // get right edge of window including frame and decorations
-            RECT clRect;
-            GetClientRect(hwnd, &clRect);
-            POINT topRight = {clRect.right, clRect.top};
-            ClientToScreen(hwnd, &topRight);
+            GetWindowInfo(hwnd, &wi);
+            if (fullscreen)
+                rect = monitor.second.rcWork;
+            else {
+                rect.left = std::max(monitor.second.rcWork.left, wi.rcWindow.left);
+                rect.bottom = wi.rcWindow.bottom;
+                rect.top = wi.rcWindow.top;
+            }
+            rect.right = monitor.second.rcWork.right - widthDPI;
 
-            if (topRight.x>rect.right-2) {  //exclude windows that don't overlap from updating
-                repositionWin(hwnd, &rect, SWP_NOZORDER | SWP_NOACTIVATE);
+            LONG compareWith = rect.right - 1;
+            if (comparisonWidth > 0)
+                compareWith = monitor.second.rcWork.right - comparisonWidth * dpi / USER_DEFAULT_SCREEN_DPI;
+
+            if (wi.rcWindow.right > compareWith) {  //exclude windows that don't overlap from updating
+                repositionWin(hwnd, &wi, &rect, SWP_NOZORDER | SWP_NOACTIVATE, fullscreen);
             }
         }
     }
-    // reposition mainwindow to right screen edge
+}
+
+void MainWindow::repositionSelf(int newWidth)
+{
+    suppressResize = true;
+    RECT rect;
+    WINDOWINFO wi;
+    wi.cbSize = sizeof(WINDOWINFO);
+    UINT dpi = GetDpiForWindow(handle);
+    int widthDPI = newWidth * dpi / USER_DEFAULT_SCREEN_DPI;  // account for different dpi for scaled displays
+    std::pair<HMONITOR, MONITORINFO> monitor = getMonitor(handle);
+
     rect = monitor.second.rcWork;
     rect.left = rect.right - widthDPI;
-    repositionWin(handle, &rect, SWP_SHOWWINDOW);
-    qDebug() << isDocked();
-    // todo: resizeEvent writes new width to win_width before calling rearrange to scale other windows as well -> what if window got moved?
+    GetWindowInfo(handle, &wi);
+    repositionWin(handle, &wi, &rect, SWP_SHOWWINDOW, true);
+}
+
+void MainWindow::rearrangeScreen()
+{
+    repositionSelf(win_width);
+    repositionOther(win_width, 0, true);
+}
+
+void MainWindow::resizeEvent(QResizeEvent *e)
+{
+    // todo: check if overlap for y direction as well
+    if (isDocked() && !suppressResize)
+        repositionOther(e->size().width(), e->oldSize().width(), false);
+    suppressResize = false;
 }
 
 void MainWindow::closeEvent(QCloseEvent *e)

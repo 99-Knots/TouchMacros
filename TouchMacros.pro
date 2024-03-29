@@ -1,5 +1,5 @@
 QT       += core gui
-LIBS += -lopengl32
+# LIBS += -ldwmapi
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
