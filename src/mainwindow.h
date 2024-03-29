@@ -18,6 +18,7 @@ protected:
     static constexpr int BUTTON_COUNT = 5;
     Key* buttonArray[BUTTON_COUNT];
 
+    int isDocked();
     void rearrangeScreen();
     void closeEvent(QCloseEvent *e);
 };

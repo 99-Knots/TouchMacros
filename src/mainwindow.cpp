@@ -4,6 +4,7 @@
 #include <QVBoxLayout>
 #include <QResizeEvent>
 #include <windows.h>
+#include <dwmapi.h>
 #include <vector>
 
 
@@ -38,23 +39,43 @@ namespace {
     }
 
 
-    bool resizeWin (HWND hwnd, LPRECT rect, UINT flags)
+    BOOL repositionWin (HWND hwnd, LPRECT rect, UINT flags)
     {
-        bool returnVal;
-        int top = rect->top;    // keep old top coordinate because AdjustWinRect crops off titlebar
         ShowWindow(hwnd, SW_NORMAL);
-        returnVal = AdjustWindowRectEx(rect, GetWindowLongW(hwnd, GWL_STYLE), FALSE, GetWindowLong(hwnd, GWL_EXSTYLE));    // need to adjust rect to account for window shadow, frame, etc...
-        if (!returnVal)
-            return false;
-        returnVal = SetWindowPos(hwnd, NULL, rect->left + 1, top + 1, rect->right - rect->left - 3, rect->bottom - top - 2, flags);
-        return returnVal;
+        // to counter the invisible borders / shadows on windows 10
+        WINDOWINFO wi;
+        wi.cbSize = sizeof(WINDOWINFO);
+        GetWindowInfo(hwnd, &wi);
+        int borderX = wi.cxWindowBorders - 1;
+        int borderY = wi.cyWindowBorders - 1;
+
+        return SetWindowPos(hwnd, NULL, rect->left - borderX, rect->top, rect->right - rect->left + borderX*2, rect->bottom - rect->top + borderY, flags);
+    }
+
+    std::pair<HMONITOR, MONITORINFO> getMonitor(HWND hwnd)
+    {
+        HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTOPRIMARY);
+        MONITORINFO mi;
+        mi.cbSize = sizeof(MONITORINFO);
+        GetMonitorInfo(monitor, &mi);
+        return std::make_pair(monitor, mi);
+    }
+
+    std::vector<HWND> getWindowsOnMonitor(HMONITOR m)
+    {
+        std::vector<HWND> windows;
+        EnumWinParam param;
+        param.windows = &windows;
+        param.monitor = m;
+        EnumWindows(GetWinOnMonitor, reinterpret_cast<LPARAM>(&param));
+        return windows;
     }
 }
 
+
+
 MainWindow::MainWindow (QWidget* parent) : QMainWindow (parent)
 {
-    //resize(720,720);
-
     QVBoxLayout* layout = new QVBoxLayout();
     layout->setAlignment(Qt::AlignTop);
 
@@ -62,6 +83,7 @@ MainWindow::MainWindow (QWidget* parent) : QMainWindow (parent)
     connect(rearrBtn, &QPushButton::clicked, this, &MainWindow::rearrangeScreen);
     layout->addWidget(rearrBtn);
 
+    // todo: read & set macros from file
     buttonArray[0] = new Key("Y", 0x59);
     buttonArray[1] = new Key("Q", 0x51);
     buttonArray[2] = new ModifierKey("Shift", VK_SHIFT);
@@ -82,27 +104,39 @@ MainWindow::MainWindow (QWidget* parent) : QMainWindow (parent)
     SetWindowLong(handle, GWL_EXSTYLE, GetWindowLong(handle, GWL_EXSTYLE) | WS_EX_NOACTIVATE  | WS_EX_APPWINDOW);    // add NoActive to window style through Windows API to prevent it from drawing keyboard focus
 }
 
+int MainWindow::isDocked()  // return 0 if not docked, 1 if at right screen edge and -1 at left edge
+{
+    int errorMargin = 2;    // in pixel
+    WINDOWINFO wi;
+    wi.cbSize = sizeof(WINDOWINFO);
+    GetWindowInfo(handle, &wi);
+    std::pair<HMONITOR, MONITORINFO> m = getMonitor(handle);
+
+    // test if window's right edge is within error margin of right monitor edge
+    if (std::abs(int(wi.rcWindow.right - wi.cxWindowBorders - m.second.rcWork.right)) <= errorMargin)
+        return 1;
+
+    // test if within error margin of left monitor edge
+    if (std::abs(int(wi.rcWindow.left + wi.cxWindowBorders - m.second.rcWork.left)) <= errorMargin)
+        return -1;
+
+    return 0;
+}
+
 void MainWindow::rearrangeScreen()
 {
-    // get active monitor and its corner coordinates on virtual desktop
-    HMONITOR monitor = MonitorFromPoint(POINT{pos().x(), pos().y()}, MONITOR_DEFAULTTOPRIMARY);
-    MONITORINFO mi;
-    mi.cbSize = sizeof(MONITORINFO);
-    GetMonitorInfo(monitor, &mi);
+    std::pair<HMONITOR, MONITORINFO> monitor = getMonitor(handle);
+    std::vector<HWND> windows = getWindowsOnMonitor(monitor.first);
+    UINT dpi = GetDpiForWindow(handle);
+    int widthDPI = win_width * dpi / USER_DEFAULT_SCREEN_DPI;  // account for different dpi for scaled displays
 
-    // get all windows on active monitor
-    std::vector<HWND> windows;
-    EnumWinParam param;
-    param.windows = &windows;
-    param.monitor = monitor;
-    EnumWindows(GetWinOnMonitor, reinterpret_cast<LPARAM>(&param));
     RECT rect;
 
     for (int i=windows.size(); i>0; --i)    // traverse in reverse order to preserve z-order when using SetWindowPos
     {
         HWND hwnd = windows[i];
-        rect = mi.rcWork;
-        rect.right -= win_width;
+        rect = monitor.second.rcWork;
+        rect.right -= widthDPI;
 
         if (hwnd != handle && GetWindowTextLength(hwnd)){
             // get right edge of window including frame and decorations
@@ -112,14 +146,15 @@ void MainWindow::rearrangeScreen()
             ClientToScreen(hwnd, &topRight);
 
             if (topRight.x>rect.right-2) {  //exclude windows that don't overlap from updating
-                resizeWin(hwnd, &rect, SWP_NOZORDER | SWP_NOACTIVATE);
+                repositionWin(hwnd, &rect, SWP_NOZORDER | SWP_NOACTIVATE);
             }
         }
     }
     // reposition mainwindow to right screen edge
-    rect = mi.rcWork;
-    rect.left = rect.right - win_width;
-    resizeWin(handle, &rect, SWP_SHOWWINDOW);
+    rect = monitor.second.rcWork;
+    rect.left = rect.right - widthDPI;
+    repositionWin(handle, &rect, SWP_SHOWWINDOW);
+    qDebug() << isDocked();
     // todo: resizeEvent writes new width to win_width before calling rearrange to scale other windows as well -> what if window got moved?
 }
 
