@@ -91,6 +91,62 @@ namespace {
         EnumWindows(GetWinOnMonitor, reinterpret_cast<LPARAM>(&param));
         return windows;
     }
+
+    void addRectByAlignment(LPRECT target, LPRECT rect, int value, Alignment alignment, bool invertTarget=false, bool invertRect=false)
+    {
+        int addend = 0;
+        switch (alignment) {
+            case Alignment::LEFT:
+                if (invertRect)
+                    addend = rect->right + value;
+                else
+                    addend = rect->left - value;
+
+                if (invertTarget)
+                    target->right = addend;
+                else
+                    target->left = addend;
+                break;
+
+            case Alignment::TOP:
+                if (invertRect)
+                    addend = rect->bottom + value;
+                else
+                    addend = rect->top - value;
+
+                if (invertTarget)
+                    target->bottom = addend;
+                else
+                    target->top = addend;
+                break;
+
+            case Alignment::RIGHT:
+                if (invertRect)
+                    addend = rect->left - value;
+                else
+                    addend = rect->right + value;
+
+                if (invertTarget)
+                    target->left = addend;
+                else
+                    target->right = addend;
+                break;
+
+            case Alignment::BOTTOM:
+                if (invertRect)
+                    addend = rect->top - value;
+                else
+                    addend = rect->bottom + value;
+
+                if (invertTarget)
+                    target->top = addend;
+                else
+                    target->bottom = addend;
+                break;
+            default:
+                break;
+        };
+    }
 }
 
 
@@ -172,22 +228,7 @@ void MainWindow::repositionOther(int sizeLeftFree, int sizeDiff)
     if (sizeDiff > 0){
         int sizeDiffDPI = sizeDiff * dpi / USER_DEFAULT_SCREEN_DPI;
         if (sizeDiff > 0){
-            switch (alignment) {
-            case Alignment::LEFT:
-                appRect.right += sizeDiffDPI;
-                break;
-            case Alignment::TOP:
-                appRect.bottom += sizeDiffDPI;
-                break;
-            case Alignment::RIGHT:
-                appRect.left -= sizeDiffDPI;
-                break;
-            case Alignment::BOTTOM:
-                appRect.top -= sizeDiffDPI;
-                break;
-            default:
-                break;
-            }
+            addRectByAlignment(&appRect, &appRect, sizeDiffDPI, alignment, true, true);
         }
 
     }
@@ -209,23 +250,8 @@ void MainWindow::repositionOther(int sizeLeftFree, int sizeDiff)
                 newWinRect = monitor.second.rcWork;
             else
                 newWinRect = wi.rcWindow;
+            addRectByAlignment(&newWinRect, &monitor.second.rcWork, -sizeDPI + 1, alignment);
 
-            switch (alignment) {
-                case Alignment::LEFT:
-                    newWinRect.left = monitor.second.rcWork.left + sizeDPI - 1;
-                    break;
-                case Alignment::TOP:
-                    newWinRect.top = monitor.second.rcWork.top + sizeDPI - 1;
-                    break;
-                case Alignment::RIGHT:
-                    newWinRect.right = monitor.second.rcWork.right - sizeDPI - 1;
-                    break;
-                case Alignment::BOTTOM:
-                    newWinRect.bottom = monitor.second.rcWork.bottom - sizeDPI - 1;;
-                    break;
-                default:
-                    break;
-            }
             repositionWin(hwnd, &wi, &newWinRect, SWP_NOZORDER | SWP_NOACTIVATE, alignment, fullscreen);
         }
     }
@@ -241,24 +267,9 @@ void MainWindow::repositionSelf(int newWidth)
     int widthDPI = newWidth * dpi / USER_DEFAULT_SCREEN_DPI;  // account for different dpi for scaled displays
     std::pair<HMONITOR, MONITORINFO> monitor = getMonitor(handle);
 
-
     rect = monitor.second.rcWork;
-    switch (alignment) {
-        case Alignment::LEFT:
-            rect.right = rect.left + widthDPI;
-            break;
-        case Alignment::TOP:
-            rect.bottom = rect.top + widthDPI;
-            break;
-        case Alignment::RIGHT:
-            rect.left = rect.right - widthDPI;
-            break;
-        case Alignment::BOTTOM:
-            rect.top = rect.bottom - widthDPI;
-            break;
-        default:
-            break;
-    }
+    addRectByAlignment(&rect, &monitor.second.rcWork, -widthDPI, alignment, true);
+
     GetWindowInfo(handle, &wi);
     repositionWin(handle, &wi, &rect, SWP_SHOWWINDOW, alignment, true);
 }
