@@ -31,8 +31,8 @@ protected:
     Key* buttonArray[BUTTON_COUNT];
 
     bool CheckAlignment();
-    void rearrangeScreen();
-    void repositionOther(int widthLeftFree, int comparisonWidth=0);
+    void rearrangeScreen(Alignment a=Alignment::RIGHT);
+    void repositionOther(int sizeLeftFree, int sizeDiff=0);
     void repositionSelf(int width);
     void resizeEvent(QResizeEvent *e);
     void closeEvent(QCloseEvent *e);

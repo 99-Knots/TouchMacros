@@ -101,7 +101,7 @@ MainWindow::MainWindow (QWidget* parent) : QMainWindow (parent)
     layout->setAlignment(Qt::AlignTop);
 
     QPushButton* rearrBtn = new QPushButton("reorder layout");
-    connect(rearrBtn, &QPushButton::clicked, this, &MainWindow::rearrangeScreen);
+    connect(rearrBtn, &QPushButton::clicked, this, [&](){rearrangeScreen(Alignment::RIGHT);});
     layout->addWidget(rearrBtn);
 
     // todo: read & set macros from file
@@ -149,10 +149,11 @@ bool MainWindow::CheckAlignment()
     return (alignment!=Alignment::NONE);
 }
 
-void MainWindow::repositionOther(int widthLeftFree, int comparisonWidth)
+void MainWindow::repositionOther(int sizeLeftFree, int sizeDiff)
 {
     UINT dpi = GetDpiForWindow(handle);
-    int widthDPI = widthLeftFree * dpi / USER_DEFAULT_SCREEN_DPI;  // account for different dpi for scaled displays
+    int sizeDPI = sizeLeftFree * dpi / USER_DEFAULT_SCREEN_DPI;  // account for different dpi for scaled displays
+
 
     std::pair<HMONITOR, MONITORINFO> monitor = getMonitor(handle);
     std::vector<HWND> windows = getWindowsOnMonitor(monitor.first);
@@ -166,11 +167,30 @@ void MainWindow::repositionOther(int widthLeftFree, int comparisonWidth)
     GetWindowInfo(handle, &appWi);
     RECT appRect;
     GetWindowRect(handle, &appRect);
-    // todo: fix resize bug where other window don't follow if moving to fast
-    //if (comparisonWidth > 0){
-    //    appRect.left = appRect.right - comparisonWidth * dpi / USER_DEFAULT_SCREEN_DPI;
-    //}
-    //appRect.left -= 2;
+
+    // ensure windows don't ignore resized app
+    if (sizeDiff > 0){
+        int sizeDiffDPI = sizeDiff * dpi / USER_DEFAULT_SCREEN_DPI;
+        if (sizeDiff > 0){
+            switch (alignment) {
+            case Alignment::LEFT:
+                appRect.right += sizeDiffDPI;
+                break;
+            case Alignment::TOP:
+                appRect.bottom += sizeDiffDPI;
+                break;
+            case Alignment::RIGHT:
+                appRect.left -= sizeDiffDPI;
+                break;
+            case Alignment::BOTTOM:
+                appRect.top -= sizeDiffDPI;
+                break;
+            default:
+                break;
+            }
+        }
+
+    }
 
     for (int i=windows.size(); i>0; --i)    // traverse in reverse order to preserve z-order when using SetWindowPos
     {
@@ -184,27 +204,24 @@ void MainWindow::repositionOther(int widthLeftFree, int comparisonWidth)
 
         RECT r;
         if (hwnd != handle && IntersectRect(&r, &appRect, &wi.rcWindow)){
+
             if (fullscreen)
                 newWinRect = monitor.second.rcWork;
             else
                 newWinRect = wi.rcWindow;
-            //newWinRect.right = monitor.second.rcWork.right - widthDPI;
-            //newWinRect.top = r.bottom - appWi.cyWindowBorders + r.top - newWinRect.top;
-            //if (alignment == Alignment::RIGHT)
-            //    newWinRect.right = monitor.second.rcWork.right - widthDPI - 1;
 
             switch (alignment) {
                 case Alignment::LEFT:
-                    newWinRect.left = monitor.second.rcWork.left + widthDPI - 1;
+                    newWinRect.left = monitor.second.rcWork.left + sizeDPI - 1;
                     break;
                 case Alignment::TOP:
-                    newWinRect.top = monitor.second.rcWork.top + widthDPI - 1;
+                    newWinRect.top = monitor.second.rcWork.top + sizeDPI - 1;
                     break;
                 case Alignment::RIGHT:
-                    newWinRect.right = monitor.second.rcWork.right - widthDPI - 1;
+                    newWinRect.right = monitor.second.rcWork.right - sizeDPI - 1;
                     break;
                 case Alignment::BOTTOM:
-                    newWinRect.bottom = monitor.second.rcWork.bottom - widthDPI - 1;;
+                    newWinRect.bottom = monitor.second.rcWork.bottom - sizeDPI - 1;;
                     break;
                 default:
                     break;
@@ -246,9 +263,9 @@ void MainWindow::repositionSelf(int newWidth)
     repositionWin(handle, &wi, &rect, SWP_SHOWWINDOW, alignment, true);
 }
 
-void MainWindow::rearrangeScreen()
+void MainWindow::rearrangeScreen(Alignment a)
 {
-    alignment = Alignment::RIGHT;
+    alignment = a;
     repositionSelf(win_width);
     repositionOther(win_width);
 }
@@ -257,9 +274,9 @@ void MainWindow::resizeEvent(QResizeEvent *e)
 {
     if (CheckAlignment() && !suppressResize){
         if (alignment == Alignment::LEFT || alignment == Alignment::RIGHT)
-            repositionOther(e->size().width(), e->oldSize().width());
+            repositionOther(e->size().width(), e->oldSize().width() - e->size().width());
         else
-            repositionOther(frameGeometry().height(), frameGeometry().height() + e->size().height() - e->oldSize().height());
+            repositionOther(frameGeometry().height(), e->oldSize().height() - e->size().height());
     }
     suppressResize = false;
 }
