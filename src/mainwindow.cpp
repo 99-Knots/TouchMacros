@@ -41,9 +41,11 @@ namespace {
     }
 
 
-    BOOL repositionWin (HWND hwnd, PWINDOWINFO wi, LPRECT rect, UINT flags, Alignment a, bool fullscreen=false)
+    void repositionWin (HWND hwnd, LPRECT rect, UINT flags, Alignment a, bool fullscreen=false)
     {
-        // todo: prevent windows from being pushed out of screen
+        WINDOWINFO wi;
+        wi.cbSize = sizeof(WINDOWINFO);
+        GetWindowInfo(hwnd, &wi);
         ShowWindow(hwnd, SW_NORMAL);
         // to counter the invisible borders / shadows on windows 10
         int borderXl = 0;
@@ -52,30 +54,41 @@ namespace {
 
         switch (a) {
             case Alignment::LEFT:
-                borderXl =  wi->cxWindowBorders - 1;
+                borderXl =  wi.cxWindowBorders - 1;
                 break;
             case Alignment::RIGHT:
-                borderXr =  wi->cxWindowBorders - 1;
+                borderXr =  wi.cxWindowBorders - 1;
                 break;
             case Alignment::BOTTOM:
-                borderY =  wi->cyWindowBorders - 1;
+                borderY =  wi.cyWindowBorders - 1;
                 break;
             default:
                 break;
         }
 
         if (fullscreen) {
-            borderXl = wi->cxWindowBorders - 1;
-            borderXr = wi->cxWindowBorders - 1;
-            borderY = wi->cyWindowBorders - 1;
+            borderXl = wi.cxWindowBorders - 1;
+            borderXr = wi.cxWindowBorders - 1;
+            borderY = wi.cyWindowBorders - 1;
         }
+        int width = rect->right-rect->left + borderXl + borderXr;
+        int height = rect->bottom - rect->top + borderY;
 
-        return SetWindowPos(hwnd, NULL, rect->left - borderXl, rect->top, rect->right - rect->left + borderXl + borderXr, rect->bottom - rect->top + borderY, flags);
+        // try resizing window
+        SetWindowPos(hwnd, NULL, rect->left - borderXl, rect->top, width, height, flags | SWP_NOMOVE);
+
+        RECT r;
+        GetWindowRect(hwnd, &r);
+        // test if resize conflicts with min size of window -> if window did not resize to provided size
+        if (r.right - r.left != width || r.bottom - r.top != height)    // don't move left and top if true
+            SetWindowPos(hwnd, NULL, r.left, r.top, rect->right - r.left, rect->bottom - r.top, flags);
+        else    // move to new position as well if false
+            SetWindowPos(hwnd, NULL, rect->left - borderXl, rect->top, 0, 0, flags | SWP_NOSIZE);
     }
 
     std::pair<HMONITOR, MONITORINFO> getMonitor(HWND hwnd)
     {
-        HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTOPRIMARY);
+        HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONULL);
         MONITORINFO mi;
         mi.cbSize = sizeof(MONITORINFO);
         GetMonitorInfo(monitor, &mi);
@@ -181,6 +194,7 @@ MainWindow::MainWindow (QWidget* parent) : QMainWindow (parent)
     SetWindowLong(handle, GWL_EXSTYLE, GetWindowLong(handle, GWL_EXSTYLE) | WS_EX_NOACTIVATE  | WS_EX_APPWINDOW);    // add NoActive to window style through Windows API to prevent it from drawing keyboard focus
 }
 
+
 bool MainWindow::CheckAlignment()
 {
     int errorMargin = 2;    // in pixel
@@ -205,38 +219,27 @@ bool MainWindow::CheckAlignment()
     return (alignment!=Alignment::NONE);
 }
 
-void MainWindow::repositionOther(int sizeLeftFree, int sizeDiff)
+
+void MainWindow::repositionOther(int sizeLeftFree, int compareOffset)
 {
     UINT dpi = GetDpiForWindow(handle);
     int sizeDPI = sizeLeftFree * dpi / USER_DEFAULT_SCREEN_DPI;  // account for different dpi for scaled displays
 
-
-    std::pair<HMONITOR, MONITORINFO> monitor = getMonitor(handle);
-    std::vector<HWND> windows = getWindowsOnMonitor(monitor.first);
+    std::vector<HWND> windows = getWindowsOnMonitor(monitorHndl);
 
     RECT newWinRect;
-    WINDOWINFO wi;
-    wi.cbSize = sizeof(WINDOWINFO);
-
-    WINDOWINFO appWi;
-    appWi.cbSize = sizeof(WINDOWINFO);
-    GetWindowInfo(handle, &appWi);
     RECT appRect;
     GetWindowRect(handle, &appRect);
 
     // ensure windows don't ignore resized app
-    if (sizeDiff > 0){
-        int sizeDiffDPI = sizeDiff * dpi / USER_DEFAULT_SCREEN_DPI;
-        if (sizeDiff > 0){
-            addRectByAlignment(&appRect, &appRect, sizeDiffDPI, alignment, true, true);
-        }
-
+    if (compareOffset > 0){
+            addRectByAlignment(&appRect, &appRect, compareOffset * dpi / USER_DEFAULT_SCREEN_DPI, alignment, true, true);
     }
 
-    for (int i=windows.size(); i>0; --i)    // traverse in reverse order to preserve z-order when using SetWindowPos
+    for (int i=windows.size(); i>0; --i)    // traverse in reverse to preserve z-order when using SetWindowPos
     {
         HWND hwnd = windows[i];
-        GetWindowInfo(hwnd, &wi);
+        GetWindowRect(hwnd, &newWinRect);
 
         WINDOWPLACEMENT wplc;
         wplc.length = sizeof(WINDOWPLACEMENT);
@@ -244,42 +247,59 @@ void MainWindow::repositionOther(int sizeLeftFree, int sizeDiff)
         bool fullscreen = wplc.showCmd == SW_MAXIMIZE;
 
         RECT r;
-        if (hwnd != handle && IntersectRect(&r, &appRect, &wi.rcWindow)){
+        if (hwnd != handle && IntersectRect(&r, &appRect, &newWinRect)){
 
             if (fullscreen)
-                newWinRect = monitor.second.rcWork;
-            else
-                newWinRect = wi.rcWindow;
-            addRectByAlignment(&newWinRect, &monitor.second.rcWork, -sizeDPI + 1, alignment);
+                CopyRect(&newWinRect, &screenspaceRect);
 
-            repositionWin(hwnd, &wi, &newWinRect, SWP_NOZORDER | SWP_NOACTIVATE, alignment, fullscreen);
+            addRectByAlignment(&newWinRect, &screenspaceRect, -sizeDPI + 1, alignment);
+            repositionWin(hwnd, &newWinRect, SWP_NOZORDER | SWP_NOACTIVATE, alignment, fullscreen);
         }
     }
 }
 
-void MainWindow::repositionSelf(int newWidth)
+
+void MainWindow::repositionSelf(int newSize)
 {
     suppressResize = true;
     RECT rect;
-    WINDOWINFO wi;
-    wi.cbSize = sizeof(WINDOWINFO);
     UINT dpi = GetDpiForWindow(handle);
-    int widthDPI = newWidth * dpi / USER_DEFAULT_SCREEN_DPI;  // account for different dpi for scaled displays
-    std::pair<HMONITOR, MONITORINFO> monitor = getMonitor(handle);
+    int widthDPI = newSize * dpi / USER_DEFAULT_SCREEN_DPI;  // account for different dpi for scaled displays
 
-    rect = monitor.second.rcWork;
-    addRectByAlignment(&rect, &monitor.second.rcWork, -widthDPI, alignment, true);
 
-    GetWindowInfo(handle, &wi);
-    repositionWin(handle, &wi, &rect, SWP_SHOWWINDOW, alignment, true);
+    CopyRect(&rect, &screenspaceRect);
+    //widthDPI = ratioScreenRect();
+    addRectByAlignment(&rect, &screenspaceRect, -widthDPI, alignment, true);
+
+    repositionWin(handle, &rect, SWP_SHOWWINDOW, alignment, true);
 }
+
+
+int MainWindow::ratioScreenRect()
+{
+    switch (alignment) {
+    case Alignment::LEFT:
+    case Alignment::RIGHT:
+        return (screenspaceRect.right - screenspaceRect.left) * layoutRatio;
+    case Alignment::TOP:
+    case Alignment::BOTTOM:
+        return (screenspaceRect.bottom - screenspaceRect.top) * layoutRatio;
+    default:
+        return (size().width());
+    };
+}
+
 
 void MainWindow::rearrangeScreen(Alignment a)
 {
+    std::pair<HMONITOR, MONITORINFO> monitor = getMonitor(handle);
+    monitorHndl = monitor.first;
+    screenspaceRect = monitor.second.rcWork;
     alignment = a;
     repositionSelf(win_width);
     repositionOther(win_width);
 }
+
 
 void MainWindow::resizeEvent(QResizeEvent *e)
 {
@@ -292,11 +312,13 @@ void MainWindow::resizeEvent(QResizeEvent *e)
     suppressResize = false;
 }
 
+
 void MainWindow::closeEvent(QCloseEvent *e)
 {
     QApplication::quit();   //quit on closure -> prevent app from continuing to run in the background after gui is discarded; important if app is Tool window
     QMainWindow::closeEvent(e);
 }
+
 
 MainWindow::~MainWindow ()
 {

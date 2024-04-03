@@ -25,12 +25,16 @@ public:
 protected:
     HWND handle;
     int win_width = 250;    // todo: find way to get good default value to
+    double layoutRatio = 0.1;
     Alignment alignment = Alignment::NONE;
+    RECT screenspaceRect = RECT{0, 0, 0, 0};
+    HMONITOR monitorHndl = NULL;
     bool suppressResize = false;
     static constexpr int BUTTON_COUNT = 5;
     Key* buttonArray[BUTTON_COUNT];
 
     bool CheckAlignment();
+    int ratioScreenRect();
     void rearrangeScreen(Alignment a=Alignment::RIGHT);
     void repositionOther(int sizeLeftFree, int sizeDiff=0);
     void repositionSelf(int width);
