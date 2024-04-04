@@ -24,8 +24,7 @@ public:
 
 protected:
     HWND handle;
-    int win_width = 250;    // todo: find way to get good default value to
-    double layoutRatio = 0.1;
+    double layoutRatio = 0.26;
     Alignment alignment = Alignment::NONE;
     RECT screenspaceRect = RECT{0, 0, 0, 0};
     HMONITOR monitorHndl = NULL;

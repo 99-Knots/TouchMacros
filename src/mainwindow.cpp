@@ -222,8 +222,8 @@ bool MainWindow::CheckAlignment()
 
 void MainWindow::repositionOther(int sizeLeftFree, int compareOffset)
 {
-    UINT dpi = GetDpiForWindow(handle);
-    int sizeDPI = sizeLeftFree * dpi / USER_DEFAULT_SCREEN_DPI;  // account for different dpi for scaled displays
+    UINT dpiFactor = GetDpiForWindow(handle) / USER_DEFAULT_SCREEN_DPI;
+    int sizeDPI = sizeLeftFree * dpiFactor;  // account for different dpi for scaled displays
 
     std::vector<HWND> windows = getWindowsOnMonitor(monitorHndl);
 
@@ -233,7 +233,7 @@ void MainWindow::repositionOther(int sizeLeftFree, int compareOffset)
 
     // ensure windows don't ignore resized app
     if (compareOffset > 0){
-            addRectByAlignment(&appRect, &appRect, compareOffset * dpi / USER_DEFAULT_SCREEN_DPI, alignment, true, true);
+            addRectByAlignment(&appRect, &appRect, compareOffset * dpiFactor, alignment, true, true);
     }
 
     for (int i=windows.size(); i>0; --i)    // traverse in reverse to preserve z-order when using SetWindowPos
@@ -263,27 +263,27 @@ void MainWindow::repositionSelf(int newSize)
 {
     suppressResize = true;
     RECT rect;
-    UINT dpi = GetDpiForWindow(handle);
-    int widthDPI = newSize * dpi / USER_DEFAULT_SCREEN_DPI;  // account for different dpi for scaled displays
+    int sizeDPI = newSize * GetDpiForWindow(handle) / USER_DEFAULT_SCREEN_DPI;  // account for different dpi for scaled displays
 
 
     CopyRect(&rect, &screenspaceRect);
-    //widthDPI = ratioScreenRect();
-    addRectByAlignment(&rect, &screenspaceRect, -widthDPI, alignment, true);
+    addRectByAlignment(&rect, &screenspaceRect, -sizeDPI, alignment, true);
 
     repositionWin(handle, &rect, SWP_SHOWWINDOW, alignment, true);
+    updateGeometry();
 }
 
 
 int MainWindow::ratioScreenRect()
 {
+    double dpiFactor = layoutRatio / GetDpiForWindow(handle) * USER_DEFAULT_SCREEN_DPI;
     switch (alignment) {
     case Alignment::LEFT:
     case Alignment::RIGHT:
-        return (screenspaceRect.right - screenspaceRect.left) * layoutRatio;
+        return (screenspaceRect.right - screenspaceRect.left) * dpiFactor;
     case Alignment::TOP:
     case Alignment::BOTTOM:
-        return (screenspaceRect.bottom - screenspaceRect.top) * layoutRatio;
+        return (screenspaceRect.bottom - screenspaceRect.top) * dpiFactor;
     default:
         return (size().width());
     };
@@ -296,8 +296,9 @@ void MainWindow::rearrangeScreen(Alignment a)
     monitorHndl = monitor.first;
     screenspaceRect = monitor.second.rcWork;
     alignment = a;
-    repositionSelf(win_width);
-    repositionOther(win_width);
+    int newSize = ratioScreenRect();
+    repositionSelf(newSize);
+    repositionOther(newSize);
 }
 
 
