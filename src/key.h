@@ -10,11 +10,11 @@ class Key : public QPushButton
     Q_OBJECT
 
 public:
-    Key (QString name = "None", WORD keycode = 0x99, QWidget* parent = nullptr);
+    Key(QString name = "None", std::vector<WORD> keycodes = {0x99}, QWidget* parent = nullptr);
     ~Key();
 
 protected:
-    INPUT input;
+    std::vector<INPUT> inputs;
 
     void pressKey();
     void releaseKey();
@@ -28,7 +28,7 @@ class ModifierKey : public Key{
     Q_OBJECT
 
 public:
-    ModifierKey(QString name = "None", WORD keycode = 0x99, QWidget* parent = nullptr);
+    ModifierKey(QString name = "None", std::vector<WORD> keycodes = {0x99}, QWidget* parent = nullptr);
 
 protected slots:
     void onClick() override;

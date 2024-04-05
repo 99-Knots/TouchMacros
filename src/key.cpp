@@ -1,24 +1,32 @@
 #include "key.h"
 
-Key::Key (QString name, WORD keycode, QWidget* parent) : QPushButton(parent)
+
+Key::Key (QString name, std::vector<WORD> keycodes, QWidget* parent) : QPushButton(parent)
 {
-    input = {};
-    input.type = INPUT_KEYBOARD;
-    input.ki.wVk = keycode;
     setText(name);
+    for (unsigned int i=0; i<keycodes.size(); i++) {
+        INPUT input = {};
+        input.type = INPUT_KEYBOARD;
+        input.ki.wVk = keycodes[i];
+        inputs.push_back(input);
+    }
     connect(this, &QPushButton::clicked, this, &Key::onClick);
 }
 
-void Key::pressKey ()
+void Key::pressKey()
 {
-    SendInput(1, &input, sizeof(INPUT));
+    SendInput(inputs.size(), &inputs[0], sizeof(INPUT));
 }
 
 void Key::releaseKey()
 {
-    input.ki.dwFlags = KEYEVENTF_KEYUP;
-    SendInput(1, &input, sizeof(INPUT));
-    input.ki.dwFlags = 0;
+    for (unsigned int i=0; i<inputs.size(); i++)
+        inputs[i].ki.dwFlags = KEYEVENTF_KEYUP;
+
+    SendInput(inputs.size(), &inputs[0], sizeof(INPUT));
+
+    for (unsigned int i=0; i<inputs.size(); i++)
+        inputs[i].ki.dwFlags = 0;
 }
 
 void Key::onClick()
@@ -34,7 +42,7 @@ Key::~Key()
 }
 
 
-ModifierKey::ModifierKey (QString name, WORD keycode, QWidget* parent) : Key(name, keycode, parent)
+ModifierKey::ModifierKey (QString name, std::vector<WORD> keycodes, QWidget* parent) : Key(name, keycodes, parent)
 {
     setCheckable(true);
 }

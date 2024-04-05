@@ -204,11 +204,18 @@ void MainWindow::readProfileFile(QString filename)
         line = in.readLine().split(';');
         bool validKeycode = false;
 
-        if (line[2] == "K"){
-            buttons.push_back(new Key(line[0], line[1].toInt(&validKeycode, 16)));
+        std::vector<WORD> keycodes;
+        QStringList keyStrings = line[1].trimmed().split('+');
+        QString mode = line[2].trimmed();
+
+        for (const auto& key : keyStrings) {
+            keycodes.push_back(key.toInt(&validKeycode, 16));
         }
-        if (line[2] == "M") {
-            buttons.push_back(new ModifierKey(line[0], line[1].toInt(&validKeycode, 16)));
+        if (mode == "K"){
+            buttons.push_back(new Key(line[0].trimmed(), keycodes));
+        }
+        if (mode == "M") {
+            buttons.push_back(new ModifierKey(line[0].trimmed(), keycodes));
         }
 
         if (validKeycode) {
@@ -217,6 +224,7 @@ void MainWindow::readProfileFile(QString filename)
     }
 
     file.close();
+    mainLayout->addWidget(buttons.back());
 }
 
 
