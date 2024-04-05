@@ -24,14 +24,17 @@ public:
 
 protected:
     HWND handle;
-    double layoutRatio = 0.26;
+    double layoutRatio = 0.10;
     Alignment alignment = Alignment::NONE;
     RECT screenspaceRect = RECT{0, 0, 0, 0};
     HMONITOR monitorHndl = NULL;
     bool suppressResize = false;
     static constexpr int BUTTON_COUNT = 5;
+    std::vector<Key*> buttons;
     Key* buttonArray[BUTTON_COUNT];
+    QLayout* mainLayout;
 
+    void readProfileFile(QString filename=":/res/keycode_defaults");
     bool CheckAlignment();
     int ratioScreenRect();
     void rearrangeScreen(Alignment a=Alignment::RIGHT);

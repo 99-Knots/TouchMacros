@@ -3,6 +3,7 @@
 #include <QScreen>
 #include <QVBoxLayout>
 #include <QResizeEvent>
+#include <QFile>
 #include <windows.h>
 #include <vector>
 
@@ -166,25 +167,17 @@ namespace {
 
 MainWindow::MainWindow (QWidget* parent) : QMainWindow (parent)
 {
-    QVBoxLayout* layout = new QVBoxLayout();
-    layout->setAlignment(Qt::AlignTop);
+    mainLayout = new QVBoxLayout();
+    mainLayout->setAlignment(Qt::AlignTop);
 
     QPushButton* rearrBtn = new QPushButton("reorder layout");
     connect(rearrBtn, &QPushButton::clicked, this, [&](){rearrangeScreen(Alignment::RIGHT);});
-    layout->addWidget(rearrBtn);
+    mainLayout->addWidget(rearrBtn);
 
-    // todo: read & set macros from file
-    buttonArray[0] = new Key("Y", 0x59);
-    buttonArray[1] = new Key("Q", 0x51);
-    buttonArray[2] = new ModifierKey("Shift", VK_SHIFT);
-    buttonArray[3] = new ModifierKey("Control", VK_CONTROL);
-    buttonArray[4] = new ModifierKey("Alt", VK_MENU);
-    for (int i = 0; i < BUTTON_COUNT; i++) {
-        layout->addWidget(buttonArray[i]);
-    }
+    readProfileFile();
 
     QWidget* central_w = new QWidget(this);
-    central_w->setLayout(layout);
+    central_w->setLayout(mainLayout);
     setCentralWidget(central_w);
 
     setWindowFlags(Qt::WindowDoesNotAcceptFocus | Qt::WindowStaysOnTopHint | Qt::WindowCloseButtonHint);
@@ -192,6 +185,38 @@ MainWindow::MainWindow (QWidget* parent) : QMainWindow (parent)
 
     handle = (HWND)winId();     // get window handle of the app from identifier
     SetWindowLong(handle, GWL_EXSTYLE, GetWindowLong(handle, GWL_EXSTYLE) | WS_EX_NOACTIVATE  | WS_EX_APPWINDOW);    // add NoActive to window style through Windows API to prevent it from drawing keyboard focus
+}
+
+
+void MainWindow::readProfileFile(QString filename)
+{
+    QFile file(filename);
+    if(!file.open(QFile::ReadOnly | QFile::Text))
+    {
+        qDebug() << "Could not open the file for reading";
+        return;
+    }
+
+    buttons.clear();
+    QTextStream in(&file);
+    while (!in.atEnd()) {
+        QStringList line;
+        line = in.readLine().split(';');
+        bool validKeycode = false;
+
+        if (line[2] == "K"){
+            buttons.push_back(new Key(line[0], line[1].toInt(&validKeycode, 16)));
+        }
+        if (line[2] == "M") {
+            buttons.push_back(new ModifierKey(line[0], line[1].toInt(&validKeycode, 16)));
+        }
+
+        if (validKeycode) {
+            mainLayout->addWidget(buttons.back());
+        }
+    }
+
+    file.close();
 }
 
 
@@ -323,7 +348,6 @@ void MainWindow::closeEvent(QCloseEvent *e)
 
 MainWindow::~MainWindow ()
 {
-    for (int i = 0; i < BUTTON_COUNT; i++) {
-        delete buttonArray[i];
-    }
+    for (unsigned int i = 0; i < buttons.size(); i++)
+        delete buttons[i];
 }

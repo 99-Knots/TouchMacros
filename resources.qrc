@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/res">
+        <file alias="keycode_defaults">keycodes_default.csv</file>
+    </qresource>
+</RCC>
