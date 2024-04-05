@@ -302,13 +302,15 @@ void MainWindow::repositionSelf(int newSize)
 int MainWindow::ratioScreenRect()
 {
     double dpiFactor = layoutRatio / GetDpiForWindow(handle) * USER_DEFAULT_SCREEN_DPI;
+    double minW = frameGeometry().width() - width() + minimumWidth() + 2;
+    double minH = frameGeometry().height() - height() + minimumHeight() + 2;
     switch (alignment) {
     case Alignment::LEFT:
     case Alignment::RIGHT:
-        return (screenspaceRect.right - screenspaceRect.left) * dpiFactor;
+        return std::max((screenspaceRect.right - screenspaceRect.left) * dpiFactor, minW);
     case Alignment::TOP:
     case Alignment::BOTTOM:
-        return (screenspaceRect.bottom - screenspaceRect.top) * dpiFactor;
+        return std::max((screenspaceRect.bottom - screenspaceRect.top) * dpiFactor, minH);
     default:
         return (size().width());
     };
