@@ -13,6 +13,7 @@ public:
     Qt::Orientation orientation();
     void setOrientation(Qt::Orientation o);
     int count() const override;
+    QSize minimumSize() const override;
     QSize sizeHint() const override;
     QLayoutItem *takeAt(int index) override;
     QLayoutItem *itemAt(int index) const override;

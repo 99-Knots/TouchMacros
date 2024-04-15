@@ -3,6 +3,7 @@
 
 #include <QMainWindow>
 #include "key.h"
+#include "flowlayout.h"
 
 enum class Alignment
 {
@@ -32,7 +33,7 @@ protected:
     static constexpr int BUTTON_COUNT = 5;
     std::vector<Key*> buttons;
     Key* buttonArray[BUTTON_COUNT];
-    QLayout* mainLayout;
+    FlowLayout* mainLayout;
 
     void readProfileFile(QString filename=":/res/keycode_defaults");
     bool CheckAlignment();

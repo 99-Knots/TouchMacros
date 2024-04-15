@@ -4,6 +4,7 @@
 Key::Key (QString name, std::vector<WORD> keycodes, QWidget* parent) : QPushButton(parent)
 {
     setText(name);
+    setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
     for (unsigned int i=0; i<keycodes.size(); i++) {
         INPUT input = {};
         input.type = INPUT_KEYBOARD;

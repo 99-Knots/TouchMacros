@@ -1,5 +1,4 @@
 #include "mainwindow.h"
-#include "flowlayout.h"
 #include <QApplication>
 #include <QScreen>
 #include <QVBoxLayout>
@@ -169,10 +168,9 @@ namespace {
 MainWindow::MainWindow (QWidget* parent) : QMainWindow (parent)
 {
     mainLayout = new FlowLayout();
-    //mainLayout->setAlignment(Qt::AlignTop);
 
     QPushButton* rearrBtn = new QPushButton("reorder layout");
-    connect(rearrBtn, &QPushButton::clicked, this, [&](){rearrangeScreen(Alignment::RIGHT);});
+    connect(rearrBtn, &QPushButton::clicked, this, [&](){rearrangeScreen(Alignment::TOP);});
     mainLayout->addWidget(rearrBtn);
 
     readProfileFile();
@@ -317,6 +315,7 @@ int MainWindow::ratioScreenRect()
         return std::max((screenspaceRect.right - screenspaceRect.left) * dpiFactor, minW);
     case Alignment::TOP:
     case Alignment::BOTTOM:
+        mainLayout->setOrientation(Qt::Horizontal);
         return std::max((screenspaceRect.bottom - screenspaceRect.top) * dpiFactor, minH);
     default:
         return (size().width());
@@ -333,6 +332,13 @@ void MainWindow::rearrangeScreen(Alignment a)
     int newSize = ratioScreenRect();
     repositionSelf(newSize);
     repositionOther(newSize);
+
+    if (CheckAlignment() && !suppressResize){
+        if (alignment == Alignment::LEFT || alignment == Alignment::RIGHT)
+            mainLayout->setOrientation(Qt::Vertical);
+        else
+            mainLayout->setOrientation(Qt::Horizontal);
+    }
 }
 
 

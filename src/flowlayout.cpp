@@ -3,7 +3,7 @@
 
 FlowLayout::FlowLayout(QWidget *parent) : QLayout(parent)
 {
-    setOrientation(Qt::Vertical);
+    setOrientation(Qt::Horizontal);
 }
 
 Qt::Orientation FlowLayout::orientation()
@@ -28,11 +28,12 @@ int FlowLayout::count() const
 
 QSize FlowLayout::sizeHint() const
 {
-    QSize size(0, 0);
-    for (const auto& item : itemList) {
-        size = size.expandedTo(item->minimumSize());
-    }
-    return size;
+    return minimumSize();
+}
+
+QSize FlowLayout::minimumSize() const
+{
+    return QSize(columnWidth, rowHeight);
 }
 
 QLayoutItem *FlowLayout::takeAt(int index) {
@@ -49,20 +50,34 @@ QLayoutItem *FlowLayout::itemAt(int index) const {
 
 void FlowLayout::positionItems()
 {
-    QRect geo = geometry();
-    int columnNr = geo.width()/columnWidth;
-    int columnCounter = 0;
-    int w = geo.width()/columnNr;
-    QRect itemRect(0, 0, w, rowHeight);
+    int sectionNr;
+    int w = columnWidth;
+    int h = rowHeight;
+    if (orientation() & Qt::Vertical) {
+        sectionNr = geometry().width()/columnWidth;
+        w = geometry().width()/std::min(sectionNr, count());
+    }
+    else {
+        sectionNr = geometry().height()/rowHeight;
+        h = geometry().height()/std::min(sectionNr, count());
+    }
+    int counter = 0;
+    QRect itemRect(0, 0, w, h);
     itemRect = itemRect.marginsRemoved(QMargins(marginHorizontal, marginVertical, marginHorizontal, marginVertical));
 
     for (const auto& item : itemList){
-        if (columnCounter >= columnNr) {
-            columnCounter = 0;
-            itemRect.translate(0, rowHeight);
+        if (counter >= sectionNr) {
+            counter = 0;
+            if (orientation() & Qt::Vertical)
+                itemRect.translate(0, h);
+            else
+                itemRect.translate(w, 0);
         }
-        itemRect.moveLeft(columnCounter * w + marginHorizontal);
-        columnCounter++;
+        if (orientation() & Qt::Vertical)
+            itemRect.moveLeft(counter * w + marginHorizontal);
+        else
+            itemRect.moveTop(counter * h + marginVertical);
+        counter++;
         item->setGeometry(itemRect);
     }
 }
