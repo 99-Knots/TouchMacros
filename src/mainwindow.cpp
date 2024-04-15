@@ -1,4 +1,5 @@
 #include "mainwindow.h"
+#include "flowlayout.h"
 #include <QApplication>
 #include <QScreen>
 #include <QVBoxLayout>
@@ -167,15 +168,14 @@ namespace {
 
 MainWindow::MainWindow (QWidget* parent) : QMainWindow (parent)
 {
-    mainLayout = new QVBoxLayout();
-    mainLayout->setAlignment(Qt::AlignTop);
+    mainLayout = new FlowLayout();
+    //mainLayout->setAlignment(Qt::AlignTop);
 
     QPushButton* rearrBtn = new QPushButton("reorder layout");
     connect(rearrBtn, &QPushButton::clicked, this, [&](){rearrangeScreen(Alignment::RIGHT);});
     mainLayout->addWidget(rearrBtn);
 
     readProfileFile();
-
     QWidget* central_w = new QWidget(this);
     central_w->setLayout(mainLayout);
     setCentralWidget(central_w);
@@ -224,7 +224,6 @@ void MainWindow::readProfileFile(QString filename)
     }
 
     file.close();
-    mainLayout->addWidget(buttons.back());
 }
 
 
