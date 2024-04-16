@@ -3,10 +3,10 @@
 
 FlowLayout::FlowLayout(QWidget *parent) : QLayout(parent)
 {
-    setOrientation(Qt::Horizontal);
+    setOrientation(Qt::Vertical);
 }
 
-Qt::Orientation FlowLayout::orientation()
+Qt::Orientation FlowLayout::orientation() const
 {
     return _orientation;
 }
@@ -33,7 +33,16 @@ QSize FlowLayout::sizeHint() const
 
 QSize FlowLayout::minimumSize() const
 {
-    return QSize(columnWidth, rowHeight);
+    if (orientation() & Qt::Vertical){
+        int maxRowCount = std::max(geometry().height() / rowHeight, 1);
+        int maxColumnCount = count() / maxRowCount + (count() % maxRowCount != 0);
+        return QSize(maxColumnCount * columnWidth, rowCount * rowHeight);
+    }
+    else{
+        int maxColumnCount = std::max(geometry().width() / columnWidth, 1);
+        int maxRowCount = count() / maxColumnCount + (count() % maxColumnCount != 0);
+        return QSize(columnCount * columnWidth, maxRowCount * rowHeight);
+    }
 }
 
 QLayoutItem *FlowLayout::takeAt(int index) {
@@ -50,16 +59,20 @@ QLayoutItem *FlowLayout::itemAt(int index) const {
 
 void FlowLayout::positionItems()
 {
-    int sectionNr;
-    int w = columnWidth;
-    int h = rowHeight;
+    int sectionNr, w, h;
     if (orientation() & Qt::Vertical) {
-        sectionNr = geometry().width()/columnWidth;
-        w = geometry().width()/std::min(sectionNr, count());
+        sectionNr = std::min(geometry().width()/columnWidth, count());
+        columnCount = std::min(geometry().width()/columnWidth, count());
+        rowCount = (count() / sectionNr + (count() % sectionNr != 0));
+        w = std::max(geometry().width() / sectionNr, columnWidth);
+        h = geometry().height() / (count() / sectionNr + (count() % sectionNr != 0));
     }
     else {
-        sectionNr = geometry().height()/rowHeight;
-        h = geometry().height()/std::min(sectionNr, count());
+        sectionNr = std::min(geometry().height()/rowHeight, count());
+        columnCount = (count() / sectionNr + (count() % sectionNr != 0));
+        rowCount = std::min(geometry().height()/rowHeight, count());
+        h = geometry().height()/sectionNr;
+        w = std::max(geometry().width() / (count() / sectionNr + (count() % sectionNr != 0)), columnWidth);
     }
     int counter = 0;
     QRect itemRect(0, 0, w, h);
@@ -86,4 +99,5 @@ void FlowLayout::setGeometry(const QRect &rect)
 {
     QLayout::setGeometry(rect);
     positionItems();
+    update();
 }

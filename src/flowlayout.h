@@ -10,7 +10,7 @@ class FlowLayout : public QLayout
 public:
     FlowLayout(QWidget* parent = nullptr);
     void addItem(QLayoutItem *item) override;
-    Qt::Orientation orientation();
+    Qt::Orientation orientation() const;
     void setOrientation(Qt::Orientation o);
     int count() const override;
     QSize minimumSize() const override;
@@ -25,6 +25,8 @@ protected:
     int marginVertical = 2;
     int columnWidth = 75;
     int rowHeight = 25;
+    int rowCount = 1;
+    int columnCount = 1;
     QList<QLayoutItem*> itemList;
 
     void positionItems();
