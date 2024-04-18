@@ -4,6 +4,7 @@
 #include <QVBoxLayout>
 #include <QResizeEvent>
 #include <QFile>
+#include <QFrame>
 #include <windows.h>
 #include <vector>
 
@@ -167,7 +168,8 @@ namespace {
 
 MainWindow::MainWindow (QWidget* parent) : QMainWindow (parent)
 {
-    mainLayout = new FlowLayout();
+    QBoxLayout* mainLayout = new QBoxLayout(QBoxLayout::LeftToRight);
+    buttonLayout = new FlowLayout();
 
     QPushButton* rearrBtn = new QPushButton("reorder layout");
     connect(rearrBtn, &QPushButton::clicked, this, [&](){rearrangeScreen(Alignment::TOP);});
@@ -175,6 +177,10 @@ MainWindow::MainWindow (QWidget* parent) : QMainWindow (parent)
 
     readProfileFile();
     QWidget* central_w = new QWidget(this);
+    QFrame* tempW = new QFrame();
+    tempW->setFrameShape(QFrame::Box);
+    tempW->setLayout(buttonLayout);
+    mainLayout->addWidget(tempW);
     central_w->setLayout(mainLayout);
     setCentralWidget(central_w);
 
@@ -217,7 +223,7 @@ void MainWindow::readProfileFile(QString filename)
         }
 
         if (validKeycode) {
-            mainLayout->addWidget(buttons.back());
+            buttonLayout->addWidget(buttons.back());
         }
     }
 
@@ -315,7 +321,7 @@ int MainWindow::ratioScreenRect()
         return std::max((screenspaceRect.right - screenspaceRect.left) * dpiFactor, minW);
     case Alignment::TOP:
     case Alignment::BOTTOM:
-        mainLayout->setOrientation(Qt::Horizontal);
+        buttonLayout->setOrientation(Qt::Horizontal);
         return std::max((screenspaceRect.bottom - screenspaceRect.top) * dpiFactor, minH);
     default:
         return (size().width());
@@ -335,9 +341,9 @@ void MainWindow::rearrangeScreen(Alignment a)
 
     if (CheckAlignment() && !suppressResize){
         if (alignment == Alignment::LEFT || alignment == Alignment::RIGHT)
-            mainLayout->setOrientation(Qt::Vertical);
+            buttonLayout->setOrientation(Qt::Vertical);
         else
-            mainLayout->setOrientation(Qt::Horizontal);
+            buttonLayout->setOrientation(Qt::Horizontal);
     }
 }
 

@@ -33,7 +33,7 @@ protected:
     static constexpr int BUTTON_COUNT = 5;
     std::vector<Key*> buttons;
     Key* buttonArray[BUTTON_COUNT];
-    FlowLayout* mainLayout;
+    FlowLayout* buttonLayout;
 
     void readProfileFile(QString filename=":/res/keycode_defaults");
     bool CheckAlignment();
