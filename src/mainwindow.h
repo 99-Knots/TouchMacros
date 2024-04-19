@@ -30,10 +30,9 @@ protected:
     RECT screenspaceRect = RECT{0, 0, 0, 0};
     HMONITOR monitorHndl = NULL;
     bool suppressResize = false;
-    static constexpr int BUTTON_COUNT = 5;
-    std::vector<Key*> buttons;
-    Key* buttonArray[BUTTON_COUNT];
+    QList<Key*> buttons;
     FlowLayout* buttonLayout;
+    QBoxLayout* mainLayout;
 
     void readProfileFile(QString filename=":/res/keycode_defaults");
     bool CheckAlignment();
@@ -43,6 +42,9 @@ protected:
     void repositionSelf(int width);
     void resizeEvent(QResizeEvent *e);
     void closeEvent(QCloseEvent *e);
+
+signals:
+    void rearranged(Qt::Orientation o);
 };
 
 #endif // MAINWINDOW_H

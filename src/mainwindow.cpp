@@ -5,6 +5,7 @@
 #include <QResizeEvent>
 #include <QFile>
 #include <QFrame>
+#include <QScrollArea>
 #include <windows.h>
 #include <vector>
 
@@ -168,11 +169,11 @@ namespace {
 
 MainWindow::MainWindow (QWidget* parent) : QMainWindow (parent)
 {
-    QBoxLayout* mainLayout = new QBoxLayout(QBoxLayout::LeftToRight);
+    mainLayout = new QBoxLayout(QBoxLayout::TopToBottom);
     buttonLayout = new FlowLayout();
 
     QPushButton* rearrBtn = new QPushButton("reorder layout");
-    connect(rearrBtn, &QPushButton::clicked, this, [&](){rearrangeScreen(Alignment::TOP);});
+    connect(rearrBtn, &QPushButton::clicked, this, [&](){rearrangeScreen(Alignment::RIGHT);});
     mainLayout->addWidget(rearrBtn);
 
     readProfileFile();
@@ -183,6 +184,8 @@ MainWindow::MainWindow (QWidget* parent) : QMainWindow (parent)
     mainLayout->addWidget(tempW);
     central_w->setLayout(mainLayout);
     setCentralWidget(central_w);
+
+    connect(this, &rearranged, buttonLayout, &FlowLayout::reorient);
 
     setWindowFlags(Qt::WindowDoesNotAcceptFocus | Qt::WindowStaysOnTopHint | Qt::WindowCloseButtonHint);
     setWindowTitle("TouchMacros");
@@ -216,10 +219,10 @@ void MainWindow::readProfileFile(QString filename)
             keycodes.push_back(key.toInt(&validKeycode, 16));
         }
         if (mode == "K"){
-            buttons.push_back(new Key(line[0].trimmed(), keycodes));
+            buttons.append(new Key(line[0].trimmed(), keycodes));
         }
         if (mode == "M") {
-            buttons.push_back(new ModifierKey(line[0].trimmed(), keycodes));
+            buttons.append(new ModifierKey(line[0].trimmed(), keycodes));
         }
 
         if (validKeycode) {
@@ -312,16 +315,16 @@ void MainWindow::repositionSelf(int newSize)
 
 int MainWindow::ratioScreenRect()
 {
+    double minW, minH;
     double dpiFactor = layoutRatio / GetDpiForWindow(handle) * USER_DEFAULT_SCREEN_DPI;
-    double minW = frameGeometry().width() - width() + minimumWidth() + 2;
-    double minH = frameGeometry().height() - height() + minimumHeight() + 2;
     switch (alignment) {
     case Alignment::LEFT:
     case Alignment::RIGHT:
+        minW = frameGeometry().width() - width() + minimumWidth() + 2;
         return std::max((screenspaceRect.right - screenspaceRect.left) * dpiFactor, minW);
     case Alignment::TOP:
     case Alignment::BOTTOM:
-        buttonLayout->setOrientation(Qt::Horizontal);
+        minH = frameGeometry().height() - height() + minimumHeight() + 2;
         return std::max((screenspaceRect.bottom - screenspaceRect.top) * dpiFactor, minH);
     default:
         return (size().width());
@@ -331,20 +334,21 @@ int MainWindow::ratioScreenRect()
 
 void MainWindow::rearrangeScreen(Alignment a)
 {
+    alignment = a;
+    if (alignment == Alignment::LEFT || alignment == Alignment::RIGHT){
+        mainLayout->setDirection(QBoxLayout::TopToBottom);
+        emit rearranged(Qt::Vertical);
+    }
+    else{
+        mainLayout->setDirection(QBoxLayout::LeftToRight);
+        emit rearranged(Qt::Horizontal);
+    }
     std::pair<HMONITOR, MONITORINFO> monitor = getMonitor(handle);
     monitorHndl = monitor.first;
     screenspaceRect = monitor.second.rcWork;
-    alignment = a;
     int newSize = ratioScreenRect();
     repositionSelf(newSize);
     repositionOther(newSize);
-
-    if (CheckAlignment() && !suppressResize){
-        if (alignment == Alignment::LEFT || alignment == Alignment::RIGHT)
-            buttonLayout->setOrientation(Qt::Vertical);
-        else
-            buttonLayout->setOrientation(Qt::Horizontal);
-    }
 }
 
 

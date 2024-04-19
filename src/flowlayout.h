@@ -7,8 +7,10 @@
 
 class FlowLayout : public QLayout
 {
+    Q_OBJECT
+
 public:
-    FlowLayout(QWidget* parent = nullptr, Qt::Orientation o = Qt::Horizontal);
+    FlowLayout(QWidget* parent = nullptr, Qt::Orientation o = Qt::Vertical);
     void addItem(QLayoutItem *item) override;
     Qt::Orientation orientation() const;
     void setOrientation(Qt::Orientation o);
@@ -20,9 +22,8 @@ public:
     void setGeometry(const QRect &rect) override;
 
 protected:
-    Qt::Orientation _orientation;
-    int marginHorizontal = 2;
-    int marginVertical = 2;
+    int horizontalSpacing = 2;
+    int verticalSpacing = 2;
     int itemWidth = 75;
     int itemHeight = 25;
     int numRows = 1;
@@ -32,6 +33,12 @@ protected:
     QList<QLayoutItem*> itemList;
 
     void positionItems();
+
+private:
+    Qt::Orientation m_orientation;
+
+public slots:
+    void reorient(Qt::Orientation o);
 };
 
 #endif // FLOWLAYOUT_H

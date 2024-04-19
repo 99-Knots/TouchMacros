@@ -8,23 +8,35 @@ FlowLayout::FlowLayout(QWidget *parent, Qt::Orientation o) : QLayout(parent)
 
 Qt::Orientation FlowLayout::orientation() const
 {
-    return _orientation;
+    return m_orientation;
 }
 
 void FlowLayout::setOrientation(Qt::Orientation o)
 {
-    _orientation = o;
-    //setContentsMargins(marginHorizontal, marginVertical, marginHorizontal, marginVertical);
+    m_orientation = o;
+}
+
+void FlowLayout::reorient(Qt::Orientation o)
+{
+    setOrientation(o);
+    if (orientation() & Qt::Horizontal) {
+        numRows = 1;
+        numColumns = count();
+    }
+    else {
+        numRows = count();
+        numColumns = 1;
+    }
 }
 
 int FlowLayout::columnWidth() const
 {
-    return marginHorizontal * 2 + itemWidth;
+    return horizontalSpacing * 2 + itemWidth;
 }
 
 int FlowLayout::rowHeight() const
 {
-    return marginVertical * 2 + itemHeight;
+    return verticalSpacing * 2 + itemHeight;
 }
 
 void FlowLayout::addItem(QLayoutItem *item)
@@ -39,17 +51,24 @@ int FlowLayout::count() const
 
 QSize FlowLayout::sizeHint() const
 {
-    return minimumSize();
+    QSize size(contentsMargins().left() + contentsMargins().right(), contentsMargins().top() + contentsMargins().bottom());
+
+    if (orientation() & Qt::Horizontal){
+        return size + QSize((count()/2 + (count()%2 != 0)) * columnWidth(), 2 * rowHeight());
+    }
+    else{
+        return size + QSize(2 * columnWidth(), (count()/2 + (count()%2 != 0)) * rowHeight());
+    }
 }
 
 QSize FlowLayout::minimumSize() const
 {
     QSize size(contentsMargins().left() + contentsMargins().right(), contentsMargins().top() + contentsMargins().bottom());
-    if (orientation() & Qt::Vertical){
+
+    if (orientation() & Qt::Horizontal){
         int maxRowCount = std::max(contentsRect().height() / rowHeight(), 1);
         int maxColumnCount = count() / maxRowCount + (count() % maxRowCount != 0);
         size += QSize(maxColumnCount * columnWidth(), numRows * rowHeight());
-        //return QSize(maxColumnCount * columnWidth + 2*marginHorizontal, numRows * rowHeight + 2*marginVertical);
     }
     else{
         int maxColumnCount = std::max(contentsRect().width() / columnWidth(), 1);
@@ -78,7 +97,7 @@ void FlowLayout::positionItems()
     int contentsWidth = contentsRect().width();
     int contentsHeight = contentsRect().height();
 
-    if (orientation() & Qt::Vertical) {
+    if (orientation() & Qt::Horizontal) {
         numColumns = std::min(contentsWidth/columnWidth(), count());
         numRows = (count() / numColumns + (count() % numColumns != 0));
         w = std::max(contentsWidth / numColumns, columnWidth());
@@ -95,20 +114,20 @@ void FlowLayout::positionItems()
 
     int counter = 0;
     QRect itemRect(start.x(), start.y(), w, h);
-    itemRect = itemRect.marginsRemoved(QMargins(marginHorizontal, marginVertical, marginHorizontal, marginVertical));
+    itemRect = itemRect.marginsRemoved(QMargins(horizontalSpacing, verticalSpacing, horizontalSpacing, verticalSpacing));
 
     for (const auto& item : itemList){
         if (counter >= numSections) {
             counter = 0;
-            if (orientation() & Qt::Vertical)
+            if (orientation() & Qt::Horizontal)
                 itemRect.translate(0, h);
             else
                 itemRect.translate(w, 0);
         }
-        if (orientation() & Qt::Vertical)
-            itemRect.moveLeft(counter * w + start.x() + marginHorizontal);
+        if (orientation() & Qt::Horizontal)
+            itemRect.moveLeft(counter * w + start.x() + horizontalSpacing);
         else
-            itemRect.moveTop(counter * h + start.y() + marginVertical);
+            itemRect.moveTop(counter * h + start.y() + verticalSpacing);
 
         counter++;
         item->setGeometry(itemRect);
@@ -119,5 +138,5 @@ void FlowLayout::setGeometry(const QRect &rect)
 {
     QLayout::setGeometry(rect);
     positionItems();
-    update();
+    parentWidget()->updateGeometry();
 }
