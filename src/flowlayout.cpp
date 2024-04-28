@@ -53,16 +53,21 @@ QSize FlowLayout::sizeHint() const
 {
     QSize size(contentsMargins().left() + contentsMargins().right(), contentsMargins().top() + contentsMargins().bottom());
 
+    int defaultNum = 3;
     if (orientation() & Qt::Horizontal){
-        return size + QSize((count()/2 + (count()%2 != 0)) * columnWidth(), 2 * rowHeight());
+        size += QSize((count()/defaultNum + (count()%defaultNum != 0)) * columnWidth(), defaultNum * rowHeight());
     }
     else{
-        return size + QSize(2 * columnWidth(), (count()/2 + (count()%2 != 0)) * rowHeight());
+        size += QSize(defaultNum * columnWidth(), (count()/defaultNum + (count()%defaultNum != 0)) * rowHeight());
     }
+    return size;
 }
 
 QSize FlowLayout::minimumSize() const
 {
+    if (contentsRect().isEmpty())
+        return sizeHint();
+
     QSize size(contentsMargins().left() + contentsMargins().right(), contentsMargins().top() + contentsMargins().bottom());
 
     if (orientation() & Qt::Horizontal){

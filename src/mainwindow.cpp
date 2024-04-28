@@ -173,7 +173,7 @@ MainWindow::MainWindow (QWidget* parent) : QMainWindow (parent)
     buttonLayout = new FlowLayout();
 
     QPushButton* rearrBtn = new QPushButton("reorder layout");
-    connect(rearrBtn, &QPushButton::clicked, this, [&](){rearrangeScreen(Alignment::RIGHT);});
+    connect(rearrBtn, &QPushButton::clicked, this, [&](){rearrangeScreen(Alignment::TOP);});
     mainLayout->addWidget(rearrBtn);
 
     readProfileFile();
