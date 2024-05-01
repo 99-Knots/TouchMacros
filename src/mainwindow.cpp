@@ -173,15 +173,15 @@ MainWindow::MainWindow (QWidget* parent) : QMainWindow (parent)
     buttonLayout = new FlowLayout();
 
     QPushButton* rearrBtn = new QPushButton("reorder layout");
-    connect(rearrBtn, &QPushButton::clicked, this, [&](){rearrangeScreen(Alignment::TOP);});
+    connect(rearrBtn, &QPushButton::clicked, this, [&](){rearrangeScreen(Alignment::RIGHT);});
     mainLayout->addWidget(rearrBtn);
 
     readProfileFile();
     QWidget* central_w = new QWidget(this);
-    QFrame* tempW = new QFrame();
-    tempW->setFrameShape(QFrame::Box);
-    tempW->setLayout(buttonLayout);
-    mainLayout->addWidget(tempW);
+    QFrame* frame = new QFrame();
+    frame->setFrameStyle(QFrame::Panel);
+    frame->setLayout(buttonLayout);
+    mainLayout->addWidget(frame);
     central_w->setLayout(mainLayout);
     setCentralWidget(central_w);
 
@@ -298,12 +298,10 @@ void MainWindow::repositionOther(int sizeLeftFree, int compareOffset)
 }
 
 
-void MainWindow::repositionSelf(int newSize)
+void MainWindow::repositionSelf()
 {
-    suppressResize = true;
     RECT rect;
-    int sizeDPI = newSize * GetDpiForWindow(handle) / USER_DEFAULT_SCREEN_DPI;  // account for different dpi for scaled displays
-
+    int sizeDPI = ratioScreenRect() * GetDpiForWindow(handle) / USER_DEFAULT_SCREEN_DPI;  // account for different dpi for scaled displays
 
     CopyRect(&rect, &screenspaceRect);
     addRectByAlignment(&rect, &screenspaceRect, -sizeDPI, alignment, true);
@@ -346,21 +344,20 @@ void MainWindow::rearrangeScreen(Alignment a)
     std::pair<HMONITOR, MONITORINFO> monitor = getMonitor(handle);
     monitorHndl = monitor.first;
     screenspaceRect = monitor.second.rcWork;
-    int newSize = ratioScreenRect();
-    repositionSelf(newSize);
-    repositionOther(newSize);
+
+    repositionSelf();
 }
 
 
 void MainWindow::resizeEvent(QResizeEvent *e)
 {
-    if (CheckAlignment() && !suppressResize){
+    QMainWindow::resizeEvent(e);
+    if (CheckAlignment()){
         if (alignment == Alignment::LEFT || alignment == Alignment::RIGHT)
             repositionOther(e->size().width(), e->oldSize().width() - e->size().width());
         else
             repositionOther(frameGeometry().height(), e->oldSize().height() - e->size().height());
     }
-    suppressResize = false;
 }
 
 

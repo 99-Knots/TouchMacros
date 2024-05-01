@@ -24,8 +24,8 @@ public:
 protected:
     int horizontalSpacing = 2;
     int verticalSpacing = 2;
-    int itemWidth = 75;
-    int itemHeight = 25;
+    int itemWidth = 50;
+    int itemHeight = 50;
     int numRows = 1;
     int numColumns = 1;
     int columnWidth() const;

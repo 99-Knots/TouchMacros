@@ -34,5 +34,4 @@ protected slots:
     void onClick() override;
 };
 
-
 #endif // KEY_H

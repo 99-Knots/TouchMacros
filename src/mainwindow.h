@@ -29,7 +29,6 @@ protected:
     Alignment alignment = Alignment::NONE;
     RECT screenspaceRect = RECT{0, 0, 0, 0};
     HMONITOR monitorHndl = NULL;
-    bool suppressResize = false;
     QList<Key*> buttons;
     FlowLayout* buttonLayout;
     QBoxLayout* mainLayout;
@@ -39,7 +38,7 @@ protected:
     int ratioScreenRect();
     void rearrangeScreen(Alignment a=Alignment::RIGHT);
     void repositionOther(int sizeLeftFree, int sizeDiff=0);
-    void repositionSelf(int width);
+    void repositionSelf();
     void resizeEvent(QResizeEvent *e);
     void closeEvent(QCloseEvent *e);
 

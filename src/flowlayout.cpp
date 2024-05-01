@@ -54,11 +54,11 @@ QSize FlowLayout::sizeHint() const
     QSize size(contentsMargins().left() + contentsMargins().right(), contentsMargins().top() + contentsMargins().bottom());
 
     int defaultNum = 3;
-    if (orientation() & Qt::Horizontal){
-        size += QSize((count()/defaultNum + (count()%defaultNum != 0)) * columnWidth(), defaultNum * rowHeight());
+    if (orientation() & Qt::Vertical){
+        size += QSize(defaultNum * columnWidth(), (count()/defaultNum + (count()%defaultNum != 0)) * rowHeight());
     }
     else{
-        size += QSize(defaultNum * columnWidth(), (count()/defaultNum + (count()%defaultNum != 0)) * rowHeight());
+        size += QSize((count()/defaultNum + (count()%defaultNum != 0)) * columnWidth(), defaultNum * rowHeight());
     }
     return size;
 }
@@ -70,7 +70,7 @@ QSize FlowLayout::minimumSize() const
 
     QSize size(contentsMargins().left() + contentsMargins().right(), contentsMargins().top() + contentsMargins().bottom());
 
-    if (orientation() & Qt::Horizontal){
+    if (orientation() & Qt::Vertical){
         int maxRowCount = std::max(contentsRect().height() / rowHeight(), 1);
         int maxColumnCount = count() / maxRowCount + (count() % maxRowCount != 0);
         size += QSize(maxColumnCount * columnWidth(), numRows * rowHeight());
@@ -102,7 +102,7 @@ void FlowLayout::positionItems()
     int contentsWidth = contentsRect().width();
     int contentsHeight = contentsRect().height();
 
-    if (orientation() & Qt::Horizontal) {
+    if (orientation() & Qt::Vertical) {
         numColumns = std::min(contentsWidth/columnWidth(), count());
         numRows = (count() / numColumns + (count() % numColumns != 0));
         w = std::max(contentsWidth / numColumns, columnWidth());
@@ -124,19 +124,19 @@ void FlowLayout::positionItems()
     for (const auto& item : itemList){
         if (counter >= numSections) {
             counter = 0;
-            if (orientation() & Qt::Horizontal)
+            if (orientation() & Qt::Vertical)
                 itemRect.translate(0, h);
             else
                 itemRect.translate(w, 0);
         }
-        if (orientation() & Qt::Horizontal)
+        if (orientation() & Qt::Vertical)
             itemRect.moveLeft(counter * w + start.x() + horizontalSpacing);
         else
             itemRect.moveTop(counter * h + start.y() + verticalSpacing);
 
         counter++;
         item->setGeometry(itemRect);
-    }
+    }   
 }
 
 void FlowLayout::setGeometry(const QRect &rect)
