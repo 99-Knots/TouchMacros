@@ -6,6 +6,7 @@
 #include <QFile>
 #include <QFrame>
 #include <QScrollArea>
+#include <QTimer>
 #include <windows.h>
 #include <vector>
 
@@ -173,7 +174,7 @@ MainWindow::MainWindow (QWidget* parent) : QMainWindow (parent)
     buttonLayout = new FlowLayout();
 
     QPushButton* rearrBtn = new QPushButton("reorder layout");
-    connect(rearrBtn, &QPushButton::clicked, this, [&](){rearrangeScreen(Alignment::RIGHT);});
+    connect(rearrBtn, &QPushButton::clicked, this, [&](){rearrangeScreen(Alignment::TOP);});
     mainLayout->addWidget(rearrBtn);
 
     readProfileFile();
@@ -345,7 +346,9 @@ void MainWindow::rearrangeScreen(Alignment a)
     monitorHndl = monitor.first;
     screenspaceRect = monitor.second.rcWork;
 
+    // it works, that is all I want from it
     repositionSelf();
+    QTimer::singleShot(2, Qt::PreciseTimer, this, &repositionSelf);
 }
 
 

@@ -19,14 +19,6 @@ void FlowLayout::setOrientation(Qt::Orientation o)
 void FlowLayout::reorient(Qt::Orientation o)
 {
     setOrientation(o);
-    if (orientation() & Qt::Horizontal) {
-        numRows = 1;
-        numColumns = count();
-    }
-    else {
-        numRows = count();
-        numColumns = 1;
-    }
 }
 
 int FlowLayout::columnWidth() const
@@ -69,15 +61,16 @@ QSize FlowLayout::minimumSize() const
         return sizeHint();
 
     QSize size(contentsMargins().left() + contentsMargins().right(), contentsMargins().top() + contentsMargins().bottom());
+    int maxRowCount, maxColumnCount;
 
     if (orientation() & Qt::Vertical){
-        int maxRowCount = std::max(contentsRect().height() / rowHeight(), 1);
-        int maxColumnCount = count() / maxRowCount + (count() % maxRowCount != 0);
+        maxRowCount = std::clamp(contentsRect().height() / rowHeight(), 1, count());
+        maxColumnCount = count() / maxRowCount + (count() % maxRowCount != 0);
         size += QSize(maxColumnCount * columnWidth(), numRows * rowHeight());
     }
     else{
-        int maxColumnCount = std::max(contentsRect().width() / columnWidth(), 1);
-        int maxRowCount = count() / maxColumnCount + (count() % maxColumnCount != 0);
+        maxColumnCount = std::clamp(contentsRect().width() / columnWidth(), 1, count());
+        maxRowCount = count() / maxColumnCount + (count() % maxColumnCount != 0);
         size += QSize(numColumns * columnWidth(), maxRowCount * rowHeight());
     }
     return size;
