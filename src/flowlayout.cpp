@@ -1,43 +1,43 @@
 #include "flowlayout.h"
 #include <QtWidgets>
 
-FlowLayout::FlowLayout(QWidget *parent, Qt::Orientation o) : QLayout(parent)
-{
+FlowLayout::FlowLayout(QWidget *parent, Qt::Orientation o) : QLayout(parent) {
     setOrientation(o);
 }
 
-Qt::Orientation FlowLayout::orientation() const
-{
+Qt::Orientation FlowLayout::orientation() const {
     return m_orientation;
 }
 
-void FlowLayout::setOrientation(Qt::Orientation o)
-{
+void FlowLayout::setOrientation(Qt::Orientation o) {
     m_orientation = o;
 }
 
-void FlowLayout::reorient(Qt::Orientation o)
-{
+int FlowLayout::spacing() const {
+    return -1;
+}
+
+void FlowLayout::setSpacing() {
+    return;
+}
+
+void FlowLayout::reorient(Qt::Orientation o) {
     setOrientation(o);
 }
 
-int FlowLayout::columnWidth() const
-{
+int FlowLayout::columnWidth() const {
     return horizontalSpacing * 2 + itemWidth;
 }
 
-int FlowLayout::rowHeight() const
-{
+int FlowLayout::rowHeight() const {
     return verticalSpacing * 2 + itemHeight;
 }
 
-void FlowLayout::addItem(QLayoutItem *item)
-{
+void FlowLayout::addItem(QLayoutItem *item) {
     itemList.append(item);
 }
 
-int FlowLayout::count() const
-{
+int FlowLayout::count() const {
     return itemList.size();
 }
 

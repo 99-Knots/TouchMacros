@@ -6,6 +6,8 @@
 #include <QFile>
 #include <QFrame>
 #include <QScrollArea>
+#include <QToolBar>
+#include <QIcon>
 #include <QTimer>
 #include <windows.h>
 #include <vector>
@@ -35,6 +37,9 @@ namespace {
         return true;
     }
 
+    // check if a window is a proper window and on a given monitor and add it to window list
+    // HWND hwnd - windows handle to check
+    // EnumWinParam param - pair of window list and monitor handle
     BOOL CALLBACK GetWinOnMonitor(HWND hwnd, LPARAM param)
     {
         EnumWinParam *p = reinterpret_cast<EnumWinParam*>(param);
@@ -45,6 +50,7 @@ namespace {
     }
 
 
+    // reposition a window to fill out a rect on the screen with regards to borders
     void repositionWin (HWND hwnd, LPRECT rect, UINT flags, Alignment a, bool fullscreen=false)
     {
         WINDOWINFO wi;
@@ -108,6 +114,7 @@ namespace {
         EnumWindows(GetWinOnMonitor, reinterpret_cast<LPARAM>(&param));
         return windows;
     }
+
 
     void addRectByAlignment(LPRECT target, LPRECT rect, int value, Alignment alignment, bool invertTarget=false, bool invertRect=false)
     {
@@ -175,7 +182,11 @@ MainWindow::MainWindow (QWidget* parent) : QMainWindow (parent)
 
     QPushButton* rearrBtn = new QPushButton("reorder layout");
     connect(rearrBtn, &QPushButton::clicked, this, [&](){rearrangeScreen(Alignment::TOP);});
-    mainLayout->addWidget(rearrBtn);
+    toolbar = new QToolBar();
+    toolbar->addWidget(rearrBtn);
+    toolbar->addAction(QIcon(":/res/topAlignSVG"), "rearrange");
+    addToolBar(Qt::TopToolBarArea, toolbar);
+    //mainLayout->addWidget(rearrBtn);
 
     readProfileFile();
     QWidget* central_w = new QWidget(this);
@@ -218,15 +229,17 @@ void MainWindow::readProfileFile(QString filename)
 
         for (const auto& key : keyStrings) {
             keycodes.push_back(key.toInt(&validKeycode, 16));
-        }
-        if (mode == "K"){
-            buttons.append(new Key(line[0].trimmed(), keycodes));
-        }
-        if (mode == "M") {
-            buttons.append(new ModifierKey(line[0].trimmed(), keycodes));
+            if (!validKeycode)
+                break;
         }
 
         if (validKeycode) {
+            if (mode == "K"){
+                buttons.append(new Key(line[0].trimmed(), keycodes));
+            }
+            if (mode == "M") {
+                buttons.append(new ModifierKey(line[0].trimmed(), keycodes));
+            }
             buttonLayout->addWidget(buttons.back());
         }
     }
@@ -336,10 +349,12 @@ void MainWindow::rearrangeScreen(Alignment a)
     alignment = a;
     if (alignment == Alignment::LEFT || alignment == Alignment::RIGHT){
         mainLayout->setDirection(QBoxLayout::TopToBottom);
+        addToolBar(Qt::TopToolBarArea, toolbar);
         emit rearranged(Qt::Vertical);
     }
     else{
         mainLayout->setDirection(QBoxLayout::LeftToRight);
+        addToolBar(Qt::LeftToolBarArea, toolbar);
         emit rearranged(Qt::Horizontal);
     }
     std::pair<HMONITOR, MONITORINFO> monitor = getMonitor(handle);
@@ -348,7 +363,7 @@ void MainWindow::rearrangeScreen(Alignment a)
 
     // it works, that is all I want from it
     repositionSelf();
-    QTimer::singleShot(2, Qt::PreciseTimer, this, &repositionSelf);
+    QTimer::singleShot(10, Qt::PreciseTimer, this, &repositionSelf);
 }
 
 

@@ -20,6 +20,8 @@ public:
     QLayoutItem *takeAt(int index) override;
     QLayoutItem *itemAt(int index) const override;
     void setGeometry(const QRect &rect) override;
+    int spacing() const;
+    void setSpacing();
 
 protected:
     int horizontalSpacing = 2;

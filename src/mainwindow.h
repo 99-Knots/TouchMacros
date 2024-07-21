@@ -32,6 +32,7 @@ protected:
     QList<Key*> buttons;
     FlowLayout* buttonLayout;
     QBoxLayout* mainLayout;
+    QToolBar* toolbar;
 
     void readProfileFile(QString filename=":/res/keycode_defaults");
     bool CheckAlignment();

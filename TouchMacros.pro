@@ -29,7 +29,9 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 
 DISTFILES += \
     README.md \
-    keycodes_default.csv
+    keycodes_default.csv \
+    vertical_align_top_24dp_FILL0_wght400_GRAD0_opsz24.png \
+    vertical_align_top_24dp_FILL0_wght400_GRAD0_opsz24.svg
 
 RESOURCES += \
     resources.qrc

@@ -1,5 +1,6 @@
 <RCC>
     <qresource prefix="/res">
         <file alias="keycode_defaults">keycodes_default.csv</file>
+        <file alias="topAlignSVG">vertical_align_top_24dp_FILL0_wght400_GRAD0_opsz24.svg</file>
     </qresource>
 </RCC>
