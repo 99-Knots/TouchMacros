@@ -5,11 +5,11 @@ This app aims to provide a small tool to emulate different key strokes and allow
 
 ### 🚧Under developement🚧
 #### Features so far:
-- enable and disable modifiers (shift, alt, ctrl,...) through gui buttons
-- send keypress events to keyboard focused window using
+- send keypress events to keyboard focused window
+- activate and deactivate modifiers (Shift, Alt, Ctrl,...) through gui buttons
 - support for multi-key inputs, eg. Ctrl+Z
 - load preset for available buttons from file
 - keep window on top
 - dynamically adjust button grid depending on window size
-- dock window to screen edge
+- dock window to any screen edge
 - dynamically resize other windows on monitor to not overlap
